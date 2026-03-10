@@ -1,0 +1,169 @@
+@import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Barlow:ital,wght@0,300;0,400;0,500;0,600;0,700;0,900;1,400&family=Barlow+Condensed:wght@400;500;600;700;900&family=JetBrains+Mono:wght@400;500&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+Devanagari:wght@300;400;500;600;700;900&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  /* Brand Colors */
+  --color-primary:      #c80d0d;
+  --color-primary-light: #ff3333;
+  --color-primary-dark: #880a0a;
+  --color-accent:       #fbbf24;
+  --color-bg:           #0a0a0a;
+  --color-bg-2:         #110000;
+  --color-surface:      #1a0505;
+  --color-surface-2:    #220808;
+  --color-text:         #f5f5f5;
+  --color-text-muted:   #9a9a9a;
+  --color-border:       rgba(200, 13, 13, 0.25);
+
+  /* Fonts */
+  --font-display:  'Bebas Neue', serif;
+  --font-body:     'Barlow', sans-serif;
+  --font-nepali:   'Noto Sans Devanagari', sans-serif;
+  --font-condensed:'Barlow Condensed', sans-serif;
+  --font-mono:     'JetBrains Mono', monospace;
+}
+
+* {
+  box-sizing: border-box;
+  padding: 0;
+  margin: 0;
+}
+
+html {
+  scroll-behavior: smooth;
+  overflow-x: hidden;
+}
+
+body {
+  background-color: var(--color-bg);
+  color: var(--color-text);
+  font-family: var(--font-body);
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Nepali text styling */
+.ne-text {
+  font-family: var(--font-nepali);
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 4px;
+}
+::-webkit-scrollbar-track {
+  background: #0a0a0a;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--color-primary);
+  border-radius: 2px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-primary-light);
+}
+
+/* Selection */
+::selection {
+  background: rgba(200, 13, 13, 0.4);
+  color: #fff;
+}
+
+/* Utility classes */
+@layer components {
+  .container-custom {
+    @apply max-w-7xl mx-auto px-4 sm:px-6 lg:px-8;
+  }
+
+  .btn-primary {
+    @apply inline-flex items-center gap-2 px-6 py-3 bg-primary-700 hover:bg-primary-600 text-white font-semibold rounded-sm transition-all duration-300 hover:shadow-red-glow hover:-translate-y-0.5;
+  }
+
+  .btn-outline {
+    @apply inline-flex items-center gap-2 px-6 py-3 border border-primary-700 hover:bg-primary-700/20 text-primary-400 font-semibold rounded-sm transition-all duration-300;
+  }
+
+  .section-title {
+    @apply text-4xl md:text-6xl font-display tracking-wider text-white uppercase;
+  }
+
+  .section-subtitle {
+    @apply text-lg text-dark-300 font-body mt-3;
+  }
+
+  .card-dark {
+    @apply bg-dark-950/80 border border-primary-900/30 rounded-sm backdrop-blur-sm;
+  }
+
+  .text-gradient {
+    @apply bg-gradient-to-r from-primary-400 via-primary-300 to-gold-400 bg-clip-text text-transparent;
+  }
+
+  .divider-red {
+    @apply w-16 h-0.5 bg-primary-600 my-4;
+  }
+
+  /* Red noise texture overlay */
+  .noise-overlay::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
+    pointer-events: none;
+    z-index: 1;
+  }
+
+  /* Glitch effect */
+  .glitch {
+    position: relative;
+  }
+  .glitch::before,
+  .glitch::after {
+    content: attr(data-text);
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+  }
+  .glitch::before {
+    color: #ff3333;
+    animation: glitch1 3s infinite linear alternate-reverse;
+    clip-path: polygon(0 0, 100% 0, 100% 35%, 0 35%);
+  }
+  .glitch::after {
+    color: #fbbf24;
+    animation: glitch2 2s infinite linear alternate-reverse;
+    clip-path: polygon(0 65%, 100% 65%, 100% 100%, 0 100%);
+  }
+
+  @keyframes glitch1 {
+    0%   { transform: translate(0); }
+    20%  { transform: translate(-2px, 1px); }
+    40%  { transform: translate(2px, -1px); }
+    60%  { transform: translate(0); }
+    80%  { transform: translate(1px, 2px); }
+    100% { transform: translate(-1px, -2px); }
+  }
+  @keyframes glitch2 {
+    0%   { transform: translate(0); }
+    25%  { transform: translate(2px, 0); }
+    50%  { transform: translate(-2px, 1px); }
+    75%  { transform: translate(0); }
+    100% { transform: translate(1px, -1px); }
+  }
+}
+
+/* Page transition */
+.page-enter {
+  opacity: 0;
+  transform: translateY(10px);
+}
+.page-enter-active {
+  opacity: 1;
+  transform: translateY(0);
+  transition: all 0.4s ease-out;
+}

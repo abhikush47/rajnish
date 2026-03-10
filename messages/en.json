@@ -1,0 +1,104 @@
+{
+  "nav": {
+    "home": "Home",
+    "about": "About",
+    "socialWork": "Social Work",
+    "rmoksha": "RMoksha",
+    "campaigns": "Campaigns",
+    "manifesto": "Manifesto",
+    "mayor2084": "Mayor 2084",
+    "gallery": "Gallery",
+    "news": "News",
+    "contact": "Contact",
+    "volunteer": "Volunteer",
+    "youthIdeas": "Youth Ideas",
+    "toggleLang": "नेपाली"
+  },
+  "hero": {
+    "badge": "Kalikamai Gaupalika, Parsa",
+    "namePrefix": "I am",
+    "name": "Rajnish Kushwaha",
+    "tagline": "Youth Leader • Social Worker • Voice of Change",
+    "description": "Dedicated to realizing the dreams of the youth of Kalikamai Gaupalika, tirelessly working for social transformation through RMoksha NGO.",
+    "cta1": "View Campaigns",
+    "cta2": "Become a Volunteer",
+    "scroll": "Scroll Down",
+    "mayor2084": "Mayor Candidate 2084"
+  },
+  "stats": {
+    "title": "Our Impact",
+    "volunteers": "Volunteers",
+    "villages": "Villages",
+    "programs": "Programs",
+    "youth": "Youth Benefited"
+  },
+  "vision": {
+  "title": "Our Vision",
+  "subtitle": "A dream to prosper Kalikamai Gaupalika",
+  "education": "Education",
+  "educationDesc": "Quality education accessible to all",
+  "health": "Health",
+  "healthDesc": "Ensuring basic healthcare services",
+  "employment": "Employment",
+  "employmentDesc": "Job opportunities for youth",
+  "infrastructure": "Infrastructure",
+  "infrastructureDesc": "Roads, electricity & communication development",
+  "agriculture": "Agriculture",
+  "agricultureDesc": "Modernizing farming through irrigation systems, technology, training, and better market access for farmers."
+},
+  "rmoksha": {
+    "title": "RMoksha",
+    "subtitle": "Platform for Change",
+    "description": "RMoksha is a youth-led NGO working in education, health and social justice sectors.",
+    "learnMore": "Learn More"
+  },
+  "campaigns": {
+    "title": "Campaigns",
+    "subtitle": "Our Social Projects",
+    "viewAll": "View All"
+  },
+  "manifesto": {
+    "title": "Digital Manifesto",
+    "subtitle": "Development Plan for 2084"
+  },
+  "mayor": {
+    "title": "Mayor Candidate 2084",
+    "subtitle": "For the prosperity of Kalikamai Gaupalika",
+    "voteFor": "Vote For Us"
+  },
+  "volunteer": {
+    "title": "Become a Volunteer",
+    "subtitle": "Be part of the change",
+    "name": "Full Name",
+    "phone": "Phone Number",
+    "email": "Email Address",
+    "village": "Village/Ward",
+    "interest": "Area of Interest",
+    "submit": "Register",
+    "success": "Successfully Registered!"
+  },
+  "youth": {
+    "title": "Youth Ideas",
+    "subtitle": "Your ideas can bring change",
+    "idea": "Your Idea",
+    "name": "Name",
+    "submit": "Submit Idea"
+  },
+  "contact": {
+    "title": "Contact",
+    "subtitle": "Connect with us",
+    "address": "Kalikamai Gaupalika, Parsa, Nepal",
+    "phone": "Phone",
+    "email": "Email"
+  },
+  "footer": {
+    "rights": "All Rights Reserved",
+    "madeWith": "Made in Nepal"
+  },
+  "common": {
+    "readMore": "Read More",
+    "loading": "Loading...",
+    "error": "Something went wrong",
+    "back": "Back"
+  }
+}
