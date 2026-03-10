@@ -1,5 +1,7 @@
 'use client';
+
 import { motion } from 'framer-motion';
+import { Megaphone } from 'lucide-react';
 
 const issues = [
 {
@@ -34,34 +36,61 @@ desc_ne:"सडक, खानेपानी, विद्युत र डि�
 }
 ];
 
-const activities = [
+const outcomes = [
+{
+title_en:"Youth Training Programs",
+title_ne:"युवा तालिम कार्यक्रम",
+desc_en:"200+ youths trained in leadership and entrepreneurship.",
+desc_ne:"२०० भन्दा बढी युवालाई नेतृत्व र उद्यमशीलता तालिम।"
+},
+{
+title_en:"Health Camps Organized",
+title_ne:"स्वास्थ्य शिविर आयोजना",
+desc_en:"Free health camps benefiting hundreds of villagers.",
+desc_ne:"सयौं ग्रामीणलाई लाभ पुगेको निःशुल्क स्वास्थ्य शिविर।"
+},
+{
+title_en:"School Improvements",
+title_ne:"विद्यालय सुधार",
+desc_en:"Support for improving local schools and digital learning.",
+desc_ne:"विद्यालय सुधार तथा डिजिटल शिक्षामा सहयोग।"
+},
+{
+title_en:"Tree Plantation",
+title_ne:"वृक्षारोपण अभियान",
+desc_en:"Large scale plantation campaigns for environmental protection.",
+desc_ne:"वातावरण संरक्षणका लागि वृक्षारोपण अभियान।"
+}
+];
+
+const timeline = [
 {
 year:"2025",
 title_en:"Chhath Social Service",
 title_ne:"छठ सामाजिक सेवा",
-desc_en:"Milk distribution and community support program during Chhath festival.",
-desc_ne:"छठ पर्वमा दूध वितरण तथा सामाजिक सहयोग कार्यक्रम।"
-},
-{
-year:"2025",
-title_en:"Anti-Corruption Voice",
-title_ne:"भ्रष्टाचार विरुद्ध आवाज",
-desc_en:"Public awareness campaign against corruption in Kalikamai.",
-desc_ne:"कालिकामाईमा भ्रष्टाचार विरुद्ध जनचेतना अभियान।"
+desc_en:"Milk distribution and support programs for communities.",
+desc_ne:"समुदायका लागि दूध वितरण तथा सहयोग कार्यक्रम।"
 },
 {
 year:"2024",
 title_en:"Youth Leadership Meetings",
 title_ne:"युवा नेतृत्व बैठक",
-desc_en:"Meetings with youth groups to discuss development ideas.",
-desc_ne:"विकासका विषयमा युवासँग छलफल।"
+desc_en:"Meetings with youth groups to discuss development plans.",
+desc_ne:"विकासका योजनाबारे युवासँग छलफल।"
+},
+{
+year:"2023",
+title_en:"Education Awareness",
+title_ne:"शिक्षा सचेतना",
+desc_en:"Programs promoting education in rural schools.",
+desc_ne:"ग्रामीण विद्यालयमा शिक्षा प्रवर्द्धन कार्यक्रम।"
 }
 ];
 
 const stats = [
 {label_en:"Supporters",label_ne:"समर्थक",value:1500},
 {label_en:"Volunteers",label_ne:"स्वयंसेवक",value:320},
-{label_en:"Areas Reached",label_ne:"क्षेत्र पुगेका",value:12},
+{label_en:"Villages Reached",label_ne:"गाउँ पुगेका",value:25},
 {label_en:"Campaign Events",label_ne:"कार्यक्रम",value:40}
 ];
 
@@ -71,44 +100,194 @@ const isNepali = locale === 'ne';
 
 return (
 
-<div className="min-h-screen bg-dark-950 pt-24 pb-16">
+<div className="min-h-screen bg-dark-950 pt-24 pb-16 overflow-hidden">
 
-<div className="container-custom">
+{/* HERO SECTION */}
+
+<div className="relative py-16 bg-[#080000] mb-16 overflow-hidden">
+
+<div className="absolute inset-0 bg-[radial-gradient(ellipse_70%_70%_at_50%_50%,rgba(200,13,13,0.08),transparent)]" />
+
+<div className="container-custom relative z-10 text-center">
 
 <motion.div
-initial={{ opacity:0, y:30 }}
-animate={{ opacity:1, y:0 }}
-transition={{ duration:0.7 }}
+initial={{opacity:0,y:30}}
+animate={{opacity:1,y:0}}
+transition={{duration:0.7}}
 >
 
-{/* HEADER */}
+<div className="inline-flex items-center gap-2 px-4 py-1.5 bg-primary-900/40 border border-primary-700/40 rounded-full text-primary-400 text-xs font-bold uppercase tracking-widest mb-6">
 
-<div className="text-primary-500 text-xs font-bold uppercase tracking-[0.3em] mb-3">
-{isNepali ? 'अभियानहरू' : 'Campaigns'}
+<Megaphone size={11} className="fill-primary-500 text-primary-500"/>
+
+<span className={isNepali?'font-nepali':''}>
+{isNepali ? "अभियान" : "CAMPAIGNS"}
+</span>
+
 </div>
 
-<h1 className={`text-white mb-6 ${isNepali ? 'font-nepali text-4xl font-black' : 'font-display text-7xl uppercase tracking-tight'}`}>
-{isNepali ? 'अभियानहरू' : 'Campaigns'}
+<h1 className={`text-white mb-4 ${isNepali?'font-nepali text-5xl md:text-6xl font-black':'font-display text-7xl md:text-9xl uppercase tracking-tight'}`}>
+
+{isNepali ? (
+<>अभियान <span className="text-gradient">कार्य</span></>
+) : (
+<>CAMPAIGN <span className="text-gradient">OUTCOMES</span></>
+)}
+
 </h1>
 
-<div className="w-16 h-0.5 bg-primary-700 mb-12"/>
+<p className={`text-dark-400 max-w-xl mx-auto text-base ${isNepali?'font-nepali':''}`}>
 
-{/* CAMPAIGN ISSUES */}
+{isNepali
+? "कालिकामाईको विकासका लागि मुख्य अभियानहरू।"
+: "Key development campaigns for Kalikamai."}
 
-<div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8 mb-20">
+</p>
 
-{issues.map((item,index)=>(
+</motion.div>
+
+</div>
+
+</div>
+
+
+{/* ISSUES GRID */}
+
+<div className="container-custom mb-24">
+
+<div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+
+{issues.map((item,i)=>{
+
+const colors=['#ff3333','#60a5fa','#34d399','#fbbf24','#f472b6']
+const color=colors[i % colors.length]
+
+return(
+
 <motion.div
-key={index}
-initial={{opacity:0,y:30}}
+key={i}
+initial={{opacity:0,y:40}}
 whileInView={{opacity:1,y:0}}
-viewport={{once:true}
-}
-transition={{delay:index*0.1}}
-className="card-dark p-6 hover:border-primary-600 transition"
+viewport={{once:true}}
+transition={{delay:i*0.1,duration:0.6}}
+whileHover={{y:-5}}
+className="group card-dark p-7 hover:shadow-card-hover hover:border-primary-700/40 transition-all duration-300 relative overflow-hidden"
 >
 
-<h3 className={`text-white font-bold mb-3 ${isNepali?'font-nepali':''}`}>
+<div
+className="absolute top-0 left-0 w-full h-0.5 opacity-60"
+style={{background:`linear-gradient(90deg, transparent, ${color}, transparent)`}}
+/>
+
+<h3 className={`text-white font-bold text-lg mb-2 ${isNepali?'font-nepali':''}`}>
+{isNepali ? item.title_ne : item.title_en}
+</h3>
+
+<p className={`text-dark-400 text-sm leading-relaxed ${isNepali?'font-nepali':''}`}>
+{isNepali ? item.desc_ne : item.desc_en}
+</p>
+
+<div className="absolute bottom-4 right-5 font-display text-5xl text-primary-900/20 group-hover:text-primary-800/30 transition-colors">
+{String(i+1).padStart(2,'0')}
+</div>
+
+</motion.div>
+
+)
+
+})}
+
+</div>
+
+</div>
+
+
+{/* CAMPAIGN OUTCOMES */}
+
+<div className="container-custom mb-24">
+
+<h2 className={`text-white text-3xl mb-10 ${isNepali?'font-nepali':''}`}>
+{isNepali ? "अभियान उपलब्धि" : "Campaign Outcomes"}
+</h2>
+
+<div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+
+{outcomes.map((item,i)=>{
+
+const colors = [
+'#ff3333',
+'#60a5fa',
+'#34d399',
+'#fbbf24',
+'#f472b6'
+]
+
+const color = colors[i % colors.length]
+
+return(
+
+<motion.div
+key={i}
+initial={{opacity:0,y:40}}
+whileInView={{opacity:1,y:0}}
+viewport={{once:true}}
+transition={{delay:i*0.1,duration:0.6}}
+whileHover={{y:-5}}
+className="group card-dark p-7 hover:shadow-card-hover hover:border-primary-700/40 transition-all duration-300 relative overflow-hidden"
+>
+
+{/* TOP GRADIENT LINE */}
+
+<div
+className="absolute top-0 left-0 w-full h-0.5 opacity-60"
+style={{background:`linear-gradient(90deg, transparent, ${color}, transparent)`}}
+/>
+
+{/* TITLE */}
+
+<h3 className={`text-white font-bold text-lg mb-2 ${isNepali?'font-nepali':''}`}>
+{isNepali ? item.title_ne : item.title_en}
+</h3>
+
+{/* DESCRIPTION */}
+
+<p className={`text-dark-400 text-sm leading-relaxed ${isNepali?'font-nepali':''}`}>
+{isNepali ? item.desc_ne : item.desc_en}
+</p>
+
+{/* NUMBER */}
+
+<div className="absolute bottom-4 right-5 font-display text-5xl text-primary-900/20 group-hover:text-primary-800/30 transition-colors">
+{String(i+1).padStart(2,'0')}
+</div>
+
+</motion.div>
+
+)
+
+})}
+
+</div>
+
+</div>
+
+{/* CAMPAIGN TIMELINE */}
+
+<div className="container-custom mb-24">
+
+<h2 className={`text-white text-3xl mb-10 ${isNepali?'font-nepali':''}`}>
+{isNepali ? "अभियान समयरेखा" : "Campaign Timeline"}
+</h2>
+
+<div className="space-y-6">
+
+{timeline.map((item,i)=>(
+
+<div key={i} className="border-l-4 border-primary-600 pl-6">
+
+<p className="text-primary-500 text-sm">{item.year}</p>
+
+<h3 className={`text-white font-semibold ${isNepali?'font-nepali':''}`}>
 {isNepali ? item.title_ne : item.title_en}
 </h3>
 
@@ -116,49 +295,22 @@ className="card-dark p-6 hover:border-primary-600 transition"
 {isNepali ? item.desc_ne : item.desc_en}
 </p>
 
-</motion.div>
-))}
-
 </div>
 
-{/* CAMPAIGN ACTIVITIES */}
-
-<div className="card-dark p-10 mb-20">
-
-<h2 className={`text-white text-2xl mb-8 ${isNepali?'font-nepali':''}`}>
-{isNepali ? "अभियान गतिविधि" : "Campaign Activities"}
-</h2>
-
-<div className="space-y-6">
-
-{activities.map((act,index)=>(
-
-<div key={index} className="border-l-4 border-primary-600 pl-6">
-
-<p className="text-primary-500 text-sm">{act.year}</p>
-
-<h3 className={`text-white font-semibold ${isNepali?'font-nepali':''}`}>
-{isNepali ? act.title_ne : act.title_en}
-</h3>
-
-<p className={`text-dark-400 text-sm ${isNepali?'font-nepali':''}`}>
-{isNepali ? act.desc_ne : act.desc_en}
-</p>
-
-</div>
 ))}
 
 </div>
 
 </div>
 
-{/* SUPPORT STATS */}
 
-<div className="grid grid-cols-2 md:grid-cols-4 gap-8 text-center mb-20">
+{/* IMPACT STATISTICS */}
 
-{stats.map((s,index)=>(
+<div className="container-custom grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
 
-<div key={index}>
+{stats.map((s,i)=>(
+
+<div key={i}>
 
 <p className="text-4xl font-bold text-primary-500">
 {s.value}+
@@ -171,40 +323,6 @@ className="card-dark p-6 hover:border-primary-600 transition"
 </div>
 
 ))}
-
-</div>
-
-{/* KALIKAMAI MAP */}
-
-<h2 className={`text-white text-2xl mb-6 ${isNepali?'font-nepali':''}`}>
-{isNepali ? "कालिकामाई नक्सा" : "Kalikamai Map"}
-</h2>
-
-<div className="mb-10 rounded-lg overflow-hidden border border-red-900/40 bg-dark-900 p-4">
-
-<iframe
-width="100%"
-height="350"
-src="https://www.openstreetmap.org/export/embed.html?bbox=84.7131997346878%2C27.078648426701477%2C84.7182208299637%2C27.08170527074227&layer=mapnik"
-style={{ border: "1px solid black" }}
-/>
-
-<div className="text-xs text-primary-500 mt-2">
-
-<a
-href="https://www.openstreetmap.org/?#map=18/27.080177/84.715710"
-target="_blank"
-rel="noopener noreferrer"
-className="hover:text-white transition"
->
-{isNepali ? "ठूलो नक्सा हेर्नुहोस्" : "View Larger Map"}
-</a>
-
-</div>
-
-</div>
-
-</motion.div>
 
 </div>
 
