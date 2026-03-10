@@ -4,6 +4,7 @@ import { notFound } from 'next/navigation';
 import Navbar from '@/components/layout/Navbar';
 import Footer from '@/components/layout/Footer';
 
+export const dynamic = "force-dynamic";
 const locales = ['ne', 'en'];
 
 export function generateStaticParams() {
