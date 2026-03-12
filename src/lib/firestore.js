@@ -72,3 +72,57 @@ export async function saveDoc(collectionName, data) {
   const docId = result.name?.split('/').pop();
   return docId;
 }
+
+/**
+ * Parse a single Firestore REST document into a plain JS object
+ */
+function parseDoc(doc) {
+  const id = doc.name?.split('/').pop();
+  const data = {};
+  for (const [key, val] of Object.entries(doc.fields || {})) {
+    if ('stringValue'  in val) data[key] = val.stringValue;
+    else if ('integerValue' in val) data[key] = Number(val.integerValue);
+    else if ('booleanValue' in val) data[key] = val.booleanValue;
+    else if ('nullValue'    in val) data[key] = null;
+    else if ('arrayValue'   in val)
+      data[key] = (val.arrayValue.values || []).map(v => v.stringValue ?? v.integerValue ?? null);
+    else data[key] = null;
+  }
+  return { id, ...data };
+}
+
+/**
+ * Fetch documents from a collection ordered by createdAt descending.
+ * Uses Firestore REST runQuery — no SDK needed.
+ */
+export async function fetchDocs(collectionName, limitCount = 10) {
+  if (!PROJECT_ID || !API_KEY) {
+    throw new Error('MISSING_ENV: Firebase env variables not set.');
+  }
+
+  const url = `https://firestore.googleapis.com/v1/projects/${PROJECT_ID}/databases/(default)/documents:runQuery?key=${API_KEY}`;
+
+  const body = {
+    structuredQuery: {
+      from: [{ collectionId: collectionName }],
+      orderBy: [{ field: { fieldPath: 'createdAt' }, direction: 'DESCENDING' }],
+      limit: limitCount,
+    },
+  };
+
+  const res = await fetch(url, {
+    method:  'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body:    JSON.stringify(body),
+  });
+
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err?.error?.message || `Firestore fetch error: ${res.status}`);
+  }
+
+  const rows = await res.json();
+  return rows
+    .filter(r => r.document)
+    .map(r => parseDoc(r.document));
+}
