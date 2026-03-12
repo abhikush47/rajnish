@@ -106,18 +106,52 @@ function timeAgo(iso) {
 
 // ─── Fallback static ideas (shown when Firebase not configured) ───────────────
 const FALLBACK_IDEAS = [
-  {
-    id: 'f1', name: 'Aarav Sharma', idea: 'Free WiFi in public areas and community spaces.',
-    category: 'technology', location: 'Ward 3', status: 'implemented', createdAt: new Date(Date.now() - 2*86400000).toISOString(),
-  },
-  {
-    id: 'f2', name: 'Sita Devi', idea: 'Build a youth sports complex for local youth.',
-    category: 'employment', location: 'Kalikamai', status: 'approved', createdAt: new Date(Date.now() - 5*86400000).toISOString(),
-  },
-  {
-    id: 'f3', name: 'Ram Prasad', idea: 'Organic farming training program for local farmers.',
-    category: 'agriculture', location: 'Ward 7', status: 'reviewed', createdAt: new Date(Date.now() - 7*86400000).toISOString(),
-  },
+ {
+  id: 'f1',
+  name: 'Rmoksha Youth Team',
+  idea: 'Free milk distribution for devotees during Chhath festival to support pilgrims and promote community service.',
+  category: 'community',
+  location: 'Kalikamai',
+  status: 'implemented',
+  createdAt: new Date(Date.now() - 2 * 31536000000).toISOString(),
+},
+{
+  id: 'f2',
+  name: 'Rmoksha Volunteers',
+  idea: 'Helping an elderly man in Kathmandu by arranging an artificial leg replacement and medical support.',
+  category: 'health',
+  location: 'Kathmandu',
+  status: 'implemented',
+  createdAt: new Date(Date.now() - 5 * 25920000000).toISOString(),
+},
+{
+  id: 'f3',
+  name: 'Youth Social Initiative',
+  idea: 'Free clothes distribution drive for underprivileged families during winter season.',
+  category: 'community',
+  location: 'Ward 4',
+  status: 'implemented',
+  createdAt: new Date(Date.now() - 7 * 31536000000).toISOString(),
+},
+{
+  id: 'f4',
+  name: 'Rmoksha Youth Volunteers',
+  idea: 'Community cleanliness campaign and waste collection drive in Kalikamai village areas.',
+  category: 'environment',
+  location: 'Ward 2',
+  status: 'implemented',
+  createdAt: new Date(Date.now() - 4 * 25920000000).toISOString(),
+},
+{
+  id: 'f5',
+  name: 'Local Youth Group',
+  idea: 'Organizing a free health checkup camp for elderly citizens and farmers.',
+  category: 'health',
+  location: 'Kalikamai',
+  status: 'implemented',
+  createdAt: new Date(Date.now() - 6 * 5184000000).toISOString(),
+}
+
 ];
 
 // ─── Main Page ────────────────────────────────────────────────────────────────
