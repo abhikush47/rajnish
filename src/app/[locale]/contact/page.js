@@ -2,11 +2,12 @@
 
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { useTranslations } from 'next-intl';
-import { MapPin, Phone, Mail, Facebook, Instagram, Youtube, Twitter } from 'lucide-react';
+import { useTranslations, useLocale } from 'next-intl';
+import { MapPin, Phone, Mail, Facebook, Instagram, Twitter, MessageCircle } from 'lucide-react';
 
-export default function ContactPage({ params: { locale } }) {
+export default function ContactPage() {
 
+  const locale = useLocale();
   const t = useTranslations('contact');
   const isNepali = locale === 'ne';
 
@@ -50,7 +51,7 @@ export default function ContactPage({ params: { locale } }) {
   const socials = [
     { icon: Facebook, label: 'Facebook', href: 'https://www.facebook.com/profile.php?id=61580541899428', color: '#1877f2' },
     { icon: Instagram, label: 'Instagram', href: 'https://www.instagram.com/rajnish_moksha/', color: '#e4405f' },
-    { icon: Youtube, label: 'YouTube', href: '#', color: '#ff0000' },
+   { icon: MessageCircle, label: 'WhatsApp', href: 'https://wa.me/9779851359115', color: '#25d366' },
     { icon: Twitter, label: 'Twitter/X', href: '#', color: '#1da1f2' },
   ];
 

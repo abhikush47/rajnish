@@ -1,12 +1,14 @@
 'use client';
 
 import Link from 'next/link';
-import { useTranslations } from 'next-intl';
+import { useTranslations, useLocale } from 'next-intl';
 import { motion } from 'framer-motion';
-import { Facebook, Instagram, Youtube, Twitter, MapPin, Phone, Mail, Heart } from 'lucide-react';
+import { Facebook, Heart, Instagram, Mail, MapPin, Phone, Twitter, MessageCircle } from 'lucide-react';
 
-export default function Footer({ locale }) {
+export default function Footer() {
+  const locale = useLocale();
   const t = useTranslations();
+
   const base = `/${locale}`;
   const isNepali = locale === 'ne';
   const year = new Date().getFullYear();
@@ -34,7 +36,7 @@ export default function Footer({ locale }) {
   const socials = [
     { icon: Facebook, href: 'https://www.facebook.com/profile.php?id=61580541899428', label: 'Facebook' },
     { icon: Instagram, href: 'https://www.instagram.com/rajnish_moksha/', label: 'Instagram' },
-    { icon: Youtube, href: '#', label: 'YouTube' },
+     { icon: MessageCircle, label: 'WhatsApp', href: 'https://wa.me/9779851359115', color: '#25d366' },
     { icon: Twitter, href: '#', label: 'Twitter' },
   ];
 

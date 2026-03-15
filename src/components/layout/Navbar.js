@@ -306,7 +306,7 @@ export default function Navbar({ locale }) {
 
               {/* Social links */}
               <div className="p-4 flex gap-3">
-                {['facebook', 'instagram', 'twitter', 'youtube'].map((social) => (
+                {['facebook', 'instagram', 'twitter', 'whatsapp'].map((social) => (
                   <a
                     key={social}
                     href="#"
