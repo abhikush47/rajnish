@@ -6,9 +6,16 @@ const usePostgres = !!process.env.DATABASE_URL;
 
 let pool;
 if (usePostgres) {
+  // Hide credentials safely for debugging
+  const dbHost = process.env.DATABASE_URL.split('@')[1] || 'unknown';
+  console.log(`[Social Videos] Initializing database connection pool for host: ${dbHost}`);
+  
   pool = new Pool({
     connectionString: process.env.DATABASE_URL,
-    ssl: { rejectUnauthorized: false }
+    ssl: { rejectUnauthorized: false },
+    max: 10,                      // Optimize connection pool size for Vercel Serverless
+    idleTimeoutMillis: 30000,      // Close idle connections after 30 seconds
+    connectionTimeoutMillis: 5000  // Fail fast on network timeout (5 seconds)
   });
 } else {
   console.log('[Social Videos] DATABASE_URL is not defined. Falling back to local JSON database.');
