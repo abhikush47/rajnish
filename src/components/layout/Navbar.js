@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Menu, X, Globe, ChevronDown } from 'lucide-react';
+import { X, Globe, ChevronDown } from 'lucide-react';
 import ConnectModal from '@/components/ui/ConnectModal';
 
 const NavLink = ({ href, children, onClick, className = '' }) => {
@@ -130,20 +130,20 @@ export default function Navbar({ locale }) {
           <div className="flex items-center justify-between h-16 lg:h-18">
 
             {/* Logo */}
-            <Link href={base} className="flex items-center gap-3 group flex-shrink-0 logo-responsive">
-              <div className="relative">
+            <Link href={base} className="flex items-center gap-3 group flex-shrink-0 min-w-0 logo-responsive">
+              <div className="relative flex-shrink-0">
                 <div className="w-9 h-9 bg-primary-700 rounded-sm flex items-center justify-center group-hover:bg-primary-600 transition-colors duration-200 shadow-red-glow">
                   <span className="text-white font-display text-xl tracking-tight">R</span>
                 </div>
                 <div className="absolute -inset-0.5 bg-primary-600/30 rounded-sm blur-sm group-hover:blur-md transition-all duration-300" />
               </div>
-              <div>
+              <div className="min-w-0 overflow-hidden">
                 <div
-                  className={`font-display text-base sm:text-lg tracking-wider text-white leading-none ${isNepali ? 'font-nepali text-sm sm:text-base' : ''}`}
+                  className={`font-display text-base sm:text-lg tracking-wider text-white leading-none truncate ${isNepali ? 'font-nepali text-sm sm:text-base' : ''}`}
                 >
                   {isNepali ? 'रजनीश कुशवाहा' : 'RAJNISH KUSHWAHA'}
                 </div>
-                <div className="text-[9px] sm:text-[10px] text-primary-400 tracking-[0.2em] uppercase font-body mt-0.5">
+                <div className="text-[9px] sm:text-[10px] text-primary-400 tracking-[0.2em] uppercase font-body mt-0.5 truncate">
                   {isNepali ? 'कालिकामाई गाउँपालिका' : 'KALIKAMAI GAUPALIKA'}
                 </div>
               </div>
@@ -196,7 +196,6 @@ export default function Navbar({ locale }) {
               </div>
             </div>
 
-            {/* Actions (Desktop has CTA buttons, Mobile header has ONLY hamburger menu button to prevent overflow) */}
             <div className="flex items-center gap-3">
               {/* Language toggle - Desktop only */}
               <motion.button
@@ -225,35 +224,16 @@ export default function Navbar({ locale }) {
                 <span className={isNepali ? 'font-nepali' : ''}>{t('admin')}</span>
               </Link>
 
-              {/* Mobile menu button (☰) */}
+              {/* Mobile hamburger — 3 animated bars */}
               <button
                 onClick={() => setIsOpen(!isOpen)}
-                className="lg:hidden flex items-center justify-center w-9 h-9 border border-primary-800/60 rounded-sm text-white hover:bg-primary-900/20 transition-colors duration-200 mobile-menu-button"
-                aria-label="Toggle menu"
+                className={`lg:hidden mobile-menu-button flex-shrink-0 ${isOpen ? 'open' : ''}`}
+                aria-label={isOpen ? 'Close menu' : 'Open menu'}
+                aria-expanded={isOpen}
               >
-                <AnimatePresence mode="wait">
-                  {isOpen ? (
-                    <motion.span
-                      key="close"
-                      initial={{ rotate: -90, opacity: 0 }}
-                      animate={{ rotate: 0, opacity: 1 }}
-                      exit={{ rotate: 90, opacity: 0 }}
-                      transition={{ duration: 0.15 }}
-                    >
-                      <X size={18} />
-                    </motion.span>
-                  ) : (
-                    <motion.span
-                      key="menu"
-                      initial={{ rotate: 90, opacity: 0 }}
-                      animate={{ rotate: 0, opacity: 1 }}
-                      exit={{ rotate: -90, opacity: 0 }}
-                      transition={{ duration: 0.15 }}
-                    >
-                      <Menu size={18} />
-                    </motion.span>
-                  )}
-                </AnimatePresence>
+                <span />
+                <span />
+                <span />
               </button>
             </div>
           </div>

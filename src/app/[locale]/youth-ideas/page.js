@@ -342,6 +342,7 @@ export default function YouthIdeasPage({ params: { locale } }) {
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
+          idea: data.idea,
           name: data.name,
           location: data.location,
           ward: data.ward || '',
@@ -497,18 +498,18 @@ export default function YouthIdeasPage({ params: { locale } }) {
                       <label className={`block text-xs font-bold uppercase tracking-widest text-dark-300 mb-3 ${isNepali ? 'font-nepali' : ''}`}>
                         {isNepali ? 'श्रेणी छान्नुहोस्' : 'Select Category'} *
                       </label>
-                      <div className="grid grid-cols-3 gap-2">
+                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                         {cats.map((cat) => (
                           <button
                             key={cat.id} type="button"
                             onClick={() => setSelectedCategory(cat.id)}
-                            className={`flex items-center gap-2 px-3 py-2.5 rounded-sm border text-xs font-semibold transition-all duration-150 text-left
+                            className={`flex items-center gap-2 px-3 py-2.5 rounded-sm border text-xs font-semibold transition-all duration-150 text-left min-w-0 w-full
                               ${selectedCategory === cat.id
                                 ? 'border-primary-600 bg-primary-900/30 text-primary-300'
                                 : 'border-primary-900/30 text-dark-400 hover:border-primary-800 hover:text-dark-200'}
                               ${isNepali ? 'font-nepali' : ''}`}
                           >
-                            <span>{cat.emoji}</span><span>{cat.label}</span>
+                            <span className="flex-shrink-0">{cat.emoji}</span><span className="truncate">{cat.label}</span>
                           </button>
                         ))}
                       </div>
@@ -522,8 +523,11 @@ export default function YouthIdeasPage({ params: { locale } }) {
                       <textarea
                         {...ideaRegister}
                         maxLength={500}
+                        spellCheck={false}
                         onChange={(e) => {
                           setIdeaTouched(true);
+                          // clear stale API error as soon as the idea becomes valid
+                          if (e.target.value.trim().length >= 20) setError(null);
                           ideaRegister.onChange(e);
                         }}
                         onBlur={(e) => {
@@ -549,7 +553,7 @@ export default function YouthIdeasPage({ params: { locale } }) {
                               {trimmedLength > 0 && trimmedLength < 20 && (
                                 <p className="text-red-500 text-xs flex items-center gap-1 font-semibold">
                                   <span>⚠</span>
-                                  <span>{isNepali ? 'कृपया आफ्नो विचार कम्तिमा २० अक्षरमा वर्णन गर्नुहोस्।' : 'Please describe your idea in at least 20 characters.'}</span>
+                                  <span>{isNepali ? 'कृपया आफ्नो विचार कम्तिमा २० अक्षरमा वर्णन गर्नुहोस्।' : `Need ${20 - trimmedLength} more character${20 - trimmedLength === 1 ? '' : 's'}.`}</span>
                                 </p>
                               )}
                               {trimmedLength >= 20 && trimmedLength <= 500 && (
@@ -569,8 +573,9 @@ export default function YouthIdeasPage({ params: { locale } }) {
                         </div>
                         <span className={`text-xs font-mono font-bold ${
                           trimmedLength === 0 ? 'text-dark-600' :
-                          (trimmedLength < 20 || (trimmedLength >= 480 && trimmedLength < 500)) ? 'text-yellow-500 animate-pulse' :
+                          trimmedLength < 20 ? 'text-yellow-500' :
                           trimmedLength >= 500 ? 'text-red-500 font-black' :
+                          trimmedLength >= 480 ? 'text-yellow-500' :
                           'text-green-500'
                         }`}>
                           {trimmedLength}/500
@@ -578,14 +583,15 @@ export default function YouthIdeasPage({ params: { locale } }) {
                       </div>
                     </div>
 
-                    {/* Name + Location */}
-                    <div className="grid grid-cols-2 gap-4">
+                    {/* Name + Location — 2-col desktop, 1-col mobile */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <div>
                         <label className={`block text-xs font-bold uppercase tracking-widest text-dark-300 mb-2 ${isNepali ? 'font-nepali' : ''}`}>
                           {t('name')} *
                         </label>
                         <input
                           {...register('name', { required: true })}
+                          spellCheck={false}
                           className={`w-full bg-dark-900 border rounded-sm px-4 py-3 text-white text-sm focus:outline-none focus:border-primary-600 transition-colors placeholder:text-dark-600
                             ${errors.name ? 'border-red-700' : 'border-primary-900/40'} ${isNepali ? 'font-nepali' : ''}`}
                           placeholder={isNepali ? 'तपाईंको नाम' : 'Your name'}
@@ -602,6 +608,7 @@ export default function YouthIdeasPage({ params: { locale } }) {
                         </label>
                         <input
                           {...register('location', { required: true })}
+                          spellCheck={false}
                           className={`w-full bg-dark-900 border rounded-sm px-4 py-3 text-white text-sm focus:outline-none focus:border-primary-600 transition-colors placeholder:text-dark-600
                             ${errors.location ? 'border-red-700' : 'border-primary-900/40'} ${isNepali ? 'font-nepali' : ''}`}
                           placeholder={isNepali ? 'गाउँ/वडा' : 'Village/Ward'}

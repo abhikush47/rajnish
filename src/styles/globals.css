@@ -186,43 +186,80 @@ body {
 
   .header-inner {
     width: 100% !important;
-    max-width: 430px !important;
-    margin-inline: auto !important;
-    padding-inline: 24px !important;
+    max-width: 100% !important;
+    padding-inline: 20px !important;
     display: flex !important;
     align-items: center !important;
     justify-content: space-between !important;
+    gap: 8px !important;
     box-sizing: border-box !important;
+    overflow: hidden !important;
   }
 
   @media (max-width: 380px) {
     .header-inner {
-      padding-inline: 18px !important;
+      padding-inline: 14px !important;
+      gap: 6px !important;
     }
   }
 
   .logo-responsive {
-    max-width: 220px !important;
-    width: auto !important;
+    flex: 1 1 0% !important;
+    min-width: 0 !important;
+    overflow: hidden !important;
   }
 
   @media (max-width: 380px) {
     .logo-responsive {
-      max-width: 190px !important;
+      gap: 8px !important;
     }
   }
 
+  /* 3-bar hamburger button */
   .mobile-menu-button {
-    width: 56px !important;
-    height: 56px !important;
-    flex: 0 0 56px !important;
+    width: 44px !important;
+    height: 44px !important;
+    flex: 0 0 44px !important;
     display: flex !important;
+    flex-direction: column !important;
     align-items: center !important;
     justify-content: center !important;
-    box-sizing: border-box !important;
+    gap: 6px !important;
     border: 1px solid rgba(200, 13, 13, 0.6) !important;
     border-radius: 4px !important;
+    background: transparent !important;
     padding: 0 !important;
+    cursor: pointer !important;
+  }
+
+  .mobile-menu-button span {
+    display: block !important;
+    width: 22px !important;
+    height: 2px !important;
+    background: #ffffff !important;
+    border-radius: 999px !important;
+    transition: transform 0.25s ease, opacity 0.2s ease !important;
+    flex-shrink: 0 !important;
+  }
+
+  /* Hamburger → X animation */
+  .mobile-menu-button.open span:nth-child(1) {
+    transform: translateY(8px) rotate(45deg) !important;
+  }
+  .mobile-menu-button.open span:nth-child(2) {
+    opacity: 0 !important;
+    transform: scaleX(0) !important;
+  }
+  .mobile-menu-button.open span:nth-child(3) {
+    transform: translateY(-8px) rotate(-45deg) !important;
+  }
+
+  @media (max-width: 380px) {
+    .mobile-menu-button {
+      width: 40px !important;
+      height: 40px !important;
+      flex: 0 0 40px !important;
+    }
   }
 
   .hero-content {
