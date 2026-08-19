@@ -6,6 +6,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Menu, X, Globe, ChevronDown } from 'lucide-react';
+import ConnectModal from '@/components/ui/ConnectModal';
 
 const NavLink = ({ href, children, onClick, className = '' }) => {
   const pathname = usePathname();
@@ -39,6 +40,7 @@ export default function Navbar({ locale }) {
   const [isOpen, setIsOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const [showMoreMenu, setShowMoreMenu] = useState(false);
+  const [isConnectOpen, setIsConnectOpen] = useState(false);
   const moreRef = useRef(null);
 
   const isNepali = locale === 'ne';
@@ -65,11 +67,26 @@ export default function Navbar({ locale }) {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
+  // Lock scroll when mobile menu is open
   useEffect(() => {
-    if (isOpen) document.body.style.overflow = 'hidden';
-    else document.body.style.overflow = '';
+    if (isOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
     return () => { document.body.style.overflow = ''; };
   }, [isOpen]);
+
+  // Escape key event listener to close mobile menu
+  useEffect(() => {
+    const handleEscape = (e) => {
+      if (e.key === 'Escape') {
+        setIsOpen(false);
+      }
+    };
+    document.addEventListener('keydown', handleEscape);
+    return () => document.removeEventListener('keydown', handleEscape);
+  }, []);
 
   const base = `/${locale}`;
 
@@ -91,8 +108,6 @@ export default function Navbar({ locale }) {
     { href: `${base}/contact`, label: t('contact') },
     { href: `${base}/admin`, label: t('admin') },
   ];
-
-  const allLinks = [...primaryLinks, ...moreLinks];
 
   return (
     <>
@@ -122,13 +137,13 @@ export default function Navbar({ locale }) {
                 </div>
                 <div className="absolute -inset-0.5 bg-primary-600/30 rounded-sm blur-sm group-hover:blur-md transition-all duration-300" />
               </div>
-              <div className="hidden sm:block">
+              <div>
                 <div
-                  className={`font-display text-lg tracking-wider text-white leading-none ${isNepali ? 'font-nepali text-base' : ''}`}
+                  className={`font-display text-base sm:text-lg tracking-wider text-white leading-none ${isNepali ? 'font-nepali text-sm sm:text-base' : ''}`}
                 >
                   {isNepali ? 'रजनीश कुशवाहा' : 'RAJNISH KUSHWAHA'}
                 </div>
-                <div className="text-[10px] text-primary-400 tracking-[0.2em] uppercase font-body">
+                <div className="text-[9px] sm:text-[10px] text-primary-400 tracking-[0.2em] uppercase font-body mt-0.5">
                   {isNepali ? 'कालिकामाई गाउँपालिका' : 'KALIKAMAI GAUPALIKA'}
                 </div>
               </div>
@@ -181,36 +196,36 @@ export default function Navbar({ locale }) {
               </div>
             </div>
 
-            {/* Right actions */}
+            {/* Actions (Desktop has CTA buttons, Mobile header has ONLY hamburger menu button to prevent overflow) */}
             <div className="flex items-center gap-3">
-              {/* Language toggle */}
+              {/* Language toggle - Desktop only */}
               <motion.button
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
                 onClick={toggleLocale}
-                className="flex items-center gap-1.5 px-3 py-1.5 border border-primary-800/60 hover:border-primary-600 rounded-sm text-xs font-bold tracking-wider text-primary-400 hover:text-primary-300 hover:bg-primary-900/20 transition-all duration-200"
+                className="hidden lg:flex items-center gap-1.5 px-3 py-1.5 border border-primary-800/60 hover:border-primary-600 rounded-sm text-xs font-bold tracking-wider text-primary-400 hover:text-primary-300 hover:bg-primary-900/20 transition-all duration-200"
               >
                 <Globe size={12} />
                 <span>{t('toggleLang')}</span>
               </motion.button>
 
-              {/* CTA */}
+              {/* Volunteer CTA - Desktop only */}
               <Link
                 href={`${base}/volunteer`}
-                className="hidden sm:inline-flex items-center px-4 py-2 bg-primary-700 hover:bg-primary-600 text-white text-xs font-bold uppercase tracking-widest rounded-sm transition-all duration-200 hover:shadow-red-glow"
+                className="hidden lg:inline-flex items-center px-4 py-2 bg-primary-700 hover:bg-primary-600 text-white text-xs font-bold uppercase tracking-widest rounded-sm transition-all duration-200 hover:shadow-red-glow"
               >
                 <span className={isNepali ? 'font-nepali' : ''}>{t('volunteer')}</span>
               </Link>
 
-              {/* Admin CTA */}
+              {/* Admin CTA - Desktop only */}
               <Link
                 href={`${base}/admin`}
-                className="hidden sm:inline-flex items-center px-4 py-2 border border-primary-800 hover:border-primary-600 text-primary-400 hover:text-white text-xs font-bold uppercase tracking-widest rounded-sm transition-all duration-200"
+                className="hidden lg:inline-flex items-center px-4 py-2 border border-primary-800 hover:border-primary-600 text-primary-400 hover:text-white text-xs font-bold uppercase tracking-widest rounded-sm transition-all duration-200"
               >
                 <span className={isNepali ? 'font-nepali' : ''}>{t('admin')}</span>
               </Link>
 
-              {/* Mobile menu button */}
+              {/* Mobile menu button (☰) */}
               <button
                 onClick={() => setIsOpen(!isOpen)}
                 className="lg:hidden flex items-center justify-center w-9 h-9 border border-primary-800/60 rounded-sm text-white hover:bg-primary-900/20 transition-colors duration-200"
@@ -249,6 +264,7 @@ export default function Navbar({ locale }) {
       <AnimatePresence>
         {isOpen && (
           <>
+            {/* Backdrop */}
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -257,12 +273,13 @@ export default function Navbar({ locale }) {
               className="fixed inset-0 bg-black/80 backdrop-blur-sm z-40 lg:hidden"
               onClick={() => setIsOpen(false)}
             />
+            {/* Drawer Container */}
             <motion.div
               initial={{ x: '100%' }}
               animate={{ x: 0 }}
               exit={{ x: '100%' }}
               transition={{ type: 'spring', damping: 30, stiffness: 300 }}
-              className="fixed top-0 right-0 bottom-0 w-[280px] bg-dark-950 border-l border-primary-900/40 z-50 lg:hidden overflow-y-auto"
+              className="fixed top-0 right-0 bottom-0 w-[290px] bg-dark-950 border-l border-primary-900/40 z-50 lg:hidden overflow-y-auto"
             >
               {/* Mobile header */}
               <div className="flex items-center justify-between p-4 border-b border-primary-900/30">
@@ -277,14 +294,15 @@ export default function Navbar({ locale }) {
                 </button>
               </div>
 
-              {/* Mobile links */}
+              {/* Mobile links list */}
               <div className="p-4 space-y-1">
-                {allLinks.map((link, i) => (
+                {/* Primary navigation links */}
+                {primaryLinks.map((link, i) => (
                   <motion.div
                     key={link.href}
                     initial={{ opacity: 0, x: 20 }}
                     animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: i * 0.05 }}
+                    transition={{ delay: i * 0.03 }}
                   >
                     <Link
                       href={link.href}
@@ -298,23 +316,69 @@ export default function Navbar({ locale }) {
                     </Link>
                   </motion.div>
                 ))}
+
+                {/* Submenu accordion header */}
+                <div className="pt-2 pb-1 border-t border-primary-900/10">
+                  <span className="px-4 text-[10px] text-dark-500 font-bold uppercase tracking-wider block">
+                    {isNepali ? 'थप लिङ्कहरू' : 'MORE PAGES'}
+                  </span>
+                </div>
+
+                {moreLinks.map((link, i) => (
+                  <motion.div
+                    key={link.href}
+                    initial={{ opacity: 0, x: 20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: (primaryLinks.length + i) * 0.03 }}
+                  >
+                    <Link
+                      href={link.href}
+                      onClick={() => setIsOpen(false)}
+                      className="flex items-center gap-3 px-4 py-2.5 rounded-sm hover:bg-primary-900/10 group transition-all duration-150"
+                    >
+                      <span className="w-1 h-1 rounded-full bg-primary-900 group-hover:bg-primary-600 transition-colors" />
+                      <span className={`text-xs font-semibold uppercase tracking-wider text-dark-300 group-hover:text-white transition-colors ${isNepali ? 'font-nepali' : ''}`}>
+                        {link.label}
+                      </span>
+                    </Link>
+                  </motion.div>
+                ))}
+
+                {/* Global ConnectModal trigger link */}
+                <motion.div
+                  initial={{ opacity: 0, x: 20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: (primaryLinks.length + moreLinks.length) * 0.03 }}
+                  className="pt-2 border-t border-primary-900/10"
+                >
+                  <button
+                    onClick={() => {
+                      setIsOpen(false);
+                      setIsConnectOpen(true);
+                    }}
+                    className="w-full flex items-center gap-3 px-4 py-3 rounded-sm bg-primary-900/20 hover:bg-primary-900/40 text-primary-400 hover:text-white transition-all duration-150 text-left font-bold tracking-wider uppercase text-xs"
+                  >
+                    <span className="w-1.5 h-1.5 rounded-full bg-primary-500" />
+                    <span>{isNepali ? 'रजनीशसँग जोडिनुहोस्' : 'Connect with Rajnish'}</span>
+                  </button>
+                </motion.div>
               </div>
 
-              {/* Mobile lang toggle */}
-              <div className="p-4 mt-4 border-t border-primary-900/30">
+              {/* Mobile language switch */}
+              <div className="p-4 mt-2 border-t border-primary-900/30">
                 <button
                   onClick={() => { toggleLocale(); setIsOpen(false); }}
                   className="w-full flex items-center justify-center gap-2 py-3 border border-primary-700/50 rounded-sm text-primary-400 hover:bg-primary-900/20 transition-all duration-200"
                 >
                   <Globe size={14} />
-                  <span className="text-sm font-bold tracking-widest">
+                  <span className="text-xs font-bold tracking-widest">
                     {t('toggleLang')}
                   </span>
                 </button>
               </div>
 
               {/* Social links */}
-              <div className="p-4 flex gap-3">
+              <div className="p-4 flex gap-3 border-t border-primary-900/10">
                 {[
                   { name: 'facebook', label: 'F', href: 'https://www.facebook.com/profile.php?id=61580541899428' },
                   { name: 'instagram', label: 'I', href: 'https://www.instagram.com/rajnish_moksha/' },
@@ -326,7 +390,7 @@ export default function Navbar({ locale }) {
                     href={social.href}
                     target={social.href !== '#' ? '_blank' : undefined}
                     rel={social.href !== '#' ? 'noopener noreferrer' : undefined}
-                    className="w-8 h-8 flex items-center justify-center border border-primary-900/50 rounded-sm text-dark-400 hover:text-white hover:border-primary-600 transition-all duration-200 text-xs font-bold uppercase"
+                    className="w-9 h-9 flex items-center justify-center border border-primary-900/50 rounded-sm text-dark-400 hover:text-white hover:border-primary-600 transition-all duration-200 text-xs font-bold uppercase"
                   >
                     {social.label}
                   </a>
@@ -336,6 +400,9 @@ export default function Navbar({ locale }) {
           </>
         )}
       </AnimatePresence>
+
+      {/* Connect modal triggerable globally from navbar actions */}
+      <ConnectModal isOpen={isConnectOpen} onClose={() => setIsConnectOpen(false)} />
     </>
   );
 }

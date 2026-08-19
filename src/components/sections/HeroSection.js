@@ -179,12 +179,12 @@ export default function HeroSection({ locale }) {
           {/* Name — big display */}
           <motion.div variants={itemVariants} className="mb-4">
             {isNepali ? (
-              <h1 className="font-nepali text-6xl sm:text-8xl md:text-9xl font-black text-white leading-none tracking-tight">
+              <h1 className="font-nepali text-5xl sm:text-8xl md:text-9xl font-black text-white leading-none tracking-tight">
                 <span className="text-gradient">{t('name')}</span>
               </h1>
             ) : (
               <h1
-                className="font-display text-7xl sm:text-9xl md:text-[11rem] text-white leading-none tracking-tight glitch"
+                className="font-display text-6xl sm:text-9xl md:text-[11rem] text-white leading-none tracking-tight glitch"
                 data-text="RAJNISH"
               >
                 <span className="text-gradient">RAJNISH</span>

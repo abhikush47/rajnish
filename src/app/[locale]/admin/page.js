@@ -2,9 +2,10 @@
 
 import { useState, useEffect } from 'react';
 import { useTranslations } from 'next-intl';
+import { usePathname, useRouter } from 'next/navigation';
 import { signInWithPopup, signOut, onAuthStateChanged } from 'firebase/auth';
 import { auth, googleProvider } from '@/lib/firebase';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Users, 
   ShieldAlert, 
@@ -23,12 +24,22 @@ import {
   Plus,
   Trash2,
   Edit,
-  Play
+  Play,
+  Menu,
+  Globe
 } from 'lucide-react';
 
 export default function AdminPage({ params: { locale } }) {
   const t = useTranslations('admin');
   const isNepali = locale === 'ne';
+  const router = useRouter();
+  const pathname = usePathname();
+
+  const toggleLocale = () => {
+    const newLocale = locale === 'ne' ? 'en' : 'ne';
+    const newPath = pathname.replace(`/${locale}`, `/${newLocale}`);
+    router.push(newPath);
+  };
 
   const [user, setUser] = useState(null);
   const [token, setToken] = useState(null);
@@ -36,6 +47,7 @@ export default function AdminPage({ params: { locale } }) {
   const [authError, setAuthError] = useState(null);
   const [configError, setConfigError] = useState(null);
   const [activeTab, setActiveTab] = useState('dashboard'); // dashboard, connect, volunteers, feedback, videos
+  const [isAdminMenuOpen, setIsAdminMenuOpen] = useState(false);
   
   // Data State
   const [data, setData] = useState({
@@ -68,6 +80,16 @@ export default function AdminPage({ params: { locale } }) {
   const [previewLoading, setPreviewLoading] = useState(false);
   const [uploadLoading, setUploadLoading] = useState(false);
   const [saveLoading, setSaveLoading] = useState(false);
+
+  // Lock scroll when admin mobile menu is open
+  useEffect(() => {
+    if (isAdminMenuOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => { document.body.style.overflow = ''; };
+  }, [isAdminMenuOpen]);
 
   // Authenticate user changes
   useEffect(() => {
@@ -697,11 +719,125 @@ export default function AdminPage({ params: { locale } }) {
           </div>
         </div>
 
+        {/* Mobile menu trigger header (visible < 1024px) */}
+        <div className="lg:hidden flex items-center justify-between bg-dark-900 border border-primary-900/20 px-4 py-3 rounded-sm mb-6">
+          <button
+            onClick={() => setIsAdminMenuOpen(true)}
+            className="flex items-center gap-2 text-sm font-bold uppercase tracking-wider text-primary-400 hover:text-white"
+          >
+            <Menu size={18} />
+            <span>
+              {activeTab === 'videos' 
+                ? t('socialVideos') 
+                : t('tabs.' + activeTab)}
+            </span>
+          </button>
+          
+          <button
+            onClick={toggleLocale}
+            className="flex items-center gap-1.5 px-3 py-1.5 border border-primary-800/60 rounded-sm text-xs font-bold text-primary-400 hover:text-primary-300 hover:bg-primary-900/20 transition-all duration-200"
+          >
+            <Globe size={12} />
+            <span>{locale === 'ne' ? 'EN' : 'नेपाली'}</span>
+          </button>
+        </div>
+
+        {/* Mobile Admin Navigation Drawer Overlay */}
+        <AnimatePresence>
+          {isAdminMenuOpen && (
+            <>
+              {/* Backdrop */}
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.2 }}
+                className="fixed inset-0 bg-black/80 backdrop-blur-sm z-40 lg:hidden"
+                onClick={() => setIsAdminMenuOpen(false)}
+              />
+              {/* Drawer */}
+              <motion.div
+                initial={{ x: '-100%' }}
+                animate={{ x: 0 }}
+                exit={{ x: '-100%' }}
+                transition={{ type: 'spring', damping: 30, stiffness: 300 }}
+                className="fixed top-0 left-0 bottom-0 w-[290px] bg-dark-950 border-r border-primary-900/40 z-50 lg:hidden p-4 flex flex-col justify-between overflow-y-auto"
+              >
+                <div className="space-y-6">
+                  {/* Drawer Header */}
+                  <div className="flex items-center justify-between pb-4 border-b border-primary-900/30">
+                    <span className="text-primary-400 text-xs font-bold tracking-widest uppercase">
+                      {isNepali ? 'प्रशासक मेनु' : 'ADMIN MENU'}
+                    </span>
+                    <button
+                      onClick={() => setIsAdminMenuOpen(false)}
+                      className="w-8 h-8 flex items-center justify-center text-dark-300 hover:text-white"
+                    >
+                      <X size={18} />
+                    </button>
+                  </div>
+
+                  {/* Tabs List */}
+                  <div className="space-y-1.5">
+                    {[
+                      { id: 'dashboard', label: t('tabs.dashboard'), icon: LayoutDashboard },
+                      { id: 'connect', label: t('tabs.connect'), icon: UserCheck },
+                      { id: 'volunteers', label: t('tabs.volunteers'), icon: Users },
+                      { id: 'feedback', label: t('tabs.feedback'), icon: MessageSquare },
+                      { id: 'videos', label: t('socialVideos'), icon: Play }
+                    ].map(tab => {
+                      const Icon = tab.icon;
+                      return (
+                        <button
+                          key={tab.id}
+                          onClick={() => {
+                            setActiveTab(tab.id);
+                            setIsAdminMenuOpen(false);
+                          }}
+                          className={`w-full flex items-center gap-3 px-4 py-3 text-sm font-semibold rounded-sm transition-all ${
+                            activeTab === tab.id 
+                              ? 'bg-primary-700 text-white shadow-red-glow' 
+                              : 'text-dark-400 hover:text-white hover:bg-primary-900/10'
+                          }`}
+                        >
+                          <Icon size={16} />
+                          <span>{tab.label}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Drawer Footer Actions */}
+                <div className="pt-4 border-t border-primary-900/30 space-y-3">
+                  <button
+                    onClick={() => { toggleLocale(); setIsAdminMenuOpen(false); }}
+                    className="w-full flex items-center justify-center gap-2 py-3 border border-primary-700/50 rounded-sm text-primary-400 hover:bg-primary-900/20 transition-all duration-200"
+                  >
+                    <Globe size={14} />
+                    <span className="text-xs font-bold tracking-widest">
+                      {locale === 'ne' ? 'ENGLISH' : 'नेपाली'}
+                    </span>
+                  </button>
+
+                  <button
+                    onClick={() => { handleLogout(); setIsAdminMenuOpen(false); }}
+                    className="w-full btn-outline justify-center py-3 text-xs uppercase tracking-widest flex items-center gap-1.5 border-red-950 hover:bg-red-900/10 text-red-400"
+                  >
+                    <LogOut size={13} />
+                    <span>{t('logoutBtn')}</span>
+                  </button>
+                </div>
+              </motion.div>
+            </>
+          )}
+        </AnimatePresence>
+
         {/* Tab Controls & Workspace Grid */}
         <div className="grid lg:grid-cols-5 gap-8 items-start">
           
-          {/* Side tabs */}
-          <div className="lg:col-span-1 space-y-1 bg-dark-900/50 border border-primary-900/20 p-2 rounded-sm">
+          {/* Desktop Sidebar (hidden < 1024px) */}
+          <div className="hidden lg:block lg:col-span-1 space-y-1 bg-dark-900/50 border border-primary-900/20 p-2 rounded-sm">
             {[
               { id: 'dashboard', label: t('tabs.dashboard'), icon: LayoutDashboard },
               { id: 'connect', label: t('tabs.connect'), icon: UserCheck },
@@ -728,13 +864,13 @@ export default function AdminPage({ params: { locale } }) {
           </div>
 
           {/* Main workspace panels */}
-          <div className="lg:col-span-4 bg-dark-900 border border-primary-900/30 rounded-sm p-6 sm:p-8 min-h-[500px]">
+          <div className="lg:col-span-4 bg-dark-900 border border-primary-900/30 rounded-sm p-4 sm:p-8 min-h-[500px]">
             
             {/* Tab 1: Dashboard Panel */}
             {activeTab === 'dashboard' && (
               <div className="space-y-8">
-                {/* Stats row */}
-                <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                {/* Stats row (responsive 1-2-4 columns mapping) */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                   {[
                     { label: t('totalConnect'), value: totalConnect, icon: UserCheck, tab: 'connect' },
                     { label: t('totalVolunteers'), value: totalVolunteers, icon: Users, tab: 'volunteers' },
@@ -800,7 +936,9 @@ export default function AdminPage({ params: { locale } }) {
                 <h3 className="text-white text-xl font-bold font-display uppercase tracking-wider mb-2">
                   {t('tabs.connect')}
                 </h3>
-                <div className="overflow-x-auto">
+                
+                {/* Desktop Table View (>= 768px) */}
+                <div className="hidden md:block overflow-x-auto">
                   <table className="w-full text-left border-collapse text-sm">
                     <thead>
                       <tr className="border-b border-primary-900/30 text-dark-400 text-xs font-bold uppercase tracking-wider">
@@ -882,6 +1020,89 @@ export default function AdminPage({ params: { locale } }) {
                       )}
                     </tbody>
                   </table>
+                </div>
+
+                {/* Mobile Card List View (< 768px) */}
+                <div className="md:hidden space-y-4">
+                  {data.connect_requests?.length === 0 ? (
+                    <p className="py-8 text-center text-dark-500 italic border border-primary-900/10 rounded-sm bg-dark-950">
+                      {t('noSubmissions')}
+                    </p>
+                  ) : (
+                    data.connect_requests?.map(row => (
+                      <div key={row.id} className="bg-dark-950 border border-primary-900/20 p-4 rounded-sm space-y-3">
+                        <div className="flex items-center justify-between">
+                          <span className="text-white font-bold text-sm">{row.name}</span>
+                          <span className={`text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full ${getStatusColor(row.status)}`}>
+                            {translateStatus(row.status)}
+                          </span>
+                        </div>
+                        
+                        <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-[11px] text-dark-300 border-t border-primary-900/5 pt-2">
+                          <div>
+                            <span className="text-dark-500 font-semibold block uppercase tracking-wider text-[8px] mb-0.5">Palika</span>
+                            <span className="text-white">{row.palika}</span>
+                          </div>
+                          <div>
+                            <span className="text-dark-500 font-semibold block uppercase tracking-wider text-[8px] mb-0.5">Ward</span>
+                            <span className="text-white">{row.ward}</span>
+                          </div>
+                          <div className="col-span-2">
+                            <span className="text-dark-500 font-semibold block uppercase tracking-wider text-[8px] mb-0.5">Contact</span>
+                            <span className="text-white">{row.contact}</span>
+                          </div>
+                          <div className="col-span-2">
+                            <span className="text-dark-500 font-semibold block uppercase tracking-wider text-[8px] mb-0.5">Date Submitted</span>
+                            <span className="text-dark-400">
+                              {new Date(row.createdAt).toLocaleString(isNepali ? 'ne-NP' : 'en-US')}
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* Actions block with 44px min touch heights */}
+                        <div className="flex justify-end gap-2 pt-2 border-t border-primary-900/10">
+                          {row.status === 'pending' && (
+                            <button
+                              onClick={() => handleUpdateStatus(row.id, 'connect', 'contacted')}
+                              disabled={actionLoadingId === row.id}
+                              className="p-2.5 border border-blue-900/50 hover:bg-blue-900/20 text-blue-400 rounded-sm transition-all flex items-center justify-center min-w-[36px] min-h-[36px]"
+                              title={t('actions.markContacted')}
+                            >
+                              <Clock size={15} />
+                            </button>
+                          )}
+                          {row.status !== 'approved' && (
+                            <button
+                              onClick={() => handleUpdateStatus(row.id, 'connect', 'approved')}
+                              disabled={actionLoadingId === row.id}
+                              className="p-2.5 border border-green-900/50 hover:bg-green-900/20 text-green-400 rounded-sm transition-all flex items-center justify-center min-w-[36px] min-h-[36px]"
+                              title={t('actions.approve')}
+                            >
+                              <Check size={15} />
+                            </button>
+                          )}
+                          {row.status !== 'rejected' && (
+                            <button
+                              onClick={() => handleUpdateStatus(row.id, 'connect', 'rejected')}
+                              disabled={actionLoadingId === row.id}
+                              className="p-2.5 border border-red-900/50 hover:bg-red-900/20 text-red-400 rounded-sm transition-all flex items-center justify-center min-w-[36px] min-h-[36px]"
+                              title={t('actions.reject')}
+                            >
+                              <X size={15} />
+                            </button>
+                          )}
+                          <button
+                            onClick={() => setDeleteConfirm({ id: row.id, type: 'connect' })}
+                            disabled={actionLoadingId === row.id}
+                            className="p-2.5 border border-red-955 bg-red-950/20 hover:bg-red-900/40 text-red-500 rounded-sm transition-all flex items-center justify-center min-w-[36px] min-h-[36px]"
+                            title={t('delete')}
+                          >
+                            <Trash2 size={15} />
+                          </button>
+                        </div>
+                      </div>
+                    ))
+                  )}
                 </div>
               </div>
             )}
@@ -1066,21 +1287,21 @@ export default function AdminPage({ params: { locale } }) {
             {/* Tab 5: Social Work Videos Panel */}
             {activeTab === 'videos' && (
               <div className="space-y-6">
-                <div className="flex items-center justify-between gap-4">
+                <div className="flex items-center justify-between gap-4 flex-wrap">
                   <h3 className="text-white text-xl font-bold font-display uppercase tracking-wider">
                     {t('socialVideos')}
                   </h3>
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 flex-wrap">
                     <button
                       onClick={handleRefreshAllCovers}
-                      className="btn-outline border-primary-900/60 hover:bg-primary-900/10 text-primary-400 text-xs px-4 py-2 uppercase tracking-widest font-bold flex items-center gap-1.5"
+                      className="btn-outline border-primary-900/60 hover:bg-primary-900/10 text-primary-400 text-xs px-4 py-2.5 uppercase tracking-widest font-bold flex items-center gap-1.5 min-h-[44px]"
                     >
                       <RefreshCw size={12} />
                       <span>{isNepali ? 'सबै कभर रिफ्रेस' : 'Refresh All Covers'}</span>
                     </button>
                     <button
                       onClick={handleOpenAddVideo}
-                      className="btn-primary flex items-center gap-1.5 px-4 py-2 text-xs uppercase tracking-widest shadow-red-glow font-bold"
+                      className="btn-primary flex items-center gap-1.5 px-4 py-2.5 text-xs uppercase tracking-widest shadow-red-glow font-bold min-h-[44px]"
                     >
                       <Plus size={14} />
                       <span>{t('addVideo')}</span>
@@ -1088,7 +1309,8 @@ export default function AdminPage({ params: { locale } }) {
                   </div>
                 </div>
 
-                <div className="overflow-x-auto">
+                {/* Desktop Table View (>= 768px) */}
+                <div className="hidden md:block overflow-x-auto">
                   <table className="w-full text-left border-collapse text-sm">
                     <thead>
                       <tr className="border-b border-primary-900/30 text-dark-400 text-xs font-bold uppercase tracking-wider">
@@ -1191,7 +1413,7 @@ export default function AdminPage({ params: { locale } }) {
                                   <button
                                     onClick={() => setDeleteConfirm({ id: row.id, type: 'social_video' })}
                                     disabled={actionLoadingId === row.id}
-                                    className="p-1 border border-red-950 bg-red-950/20 hover:bg-red-900/40 text-red-500 rounded-sm transition-all"
+                                    className="p-1 border border-red-955 bg-red-950/20 hover:bg-red-900/40 text-red-500 rounded-sm transition-all"
                                     title={t('delete')}
                                   >
                                     <Trash2 size={14} />
@@ -1204,6 +1426,106 @@ export default function AdminPage({ params: { locale } }) {
                       )}
                     </tbody>
                   </table>
+                </div>
+
+                {/* Mobile Card List View (< 768px) */}
+                <div className="md:hidden space-y-4">
+                  {data.social_videos?.length === 0 ? (
+                    <p className="py-8 text-center text-dark-500 italic border border-primary-900/10 rounded-sm bg-dark-950">
+                      {t('noSubmissions')}
+                    </p>
+                  ) : (
+                    data.social_videos?.map(row => {
+                      const title = isNepali ? row.title_ne : row.title_en;
+                      return (
+                        <div key={row.id} className="bg-dark-950 border border-primary-900/20 p-4 rounded-sm space-y-3">
+                          <div className="flex gap-3">
+                            <div className="w-20 aspect-video bg-dark-950 border border-primary-950 rounded-sm overflow-hidden flex items-center justify-center relative flex-shrink-0">
+                              {row.cover_image_url ? (
+                                <img
+                                  src={row.cover_image_url}
+                                  alt={title}
+                                  className="w-full h-full object-cover"
+                                />
+                              ) : (
+                                <div className="flex flex-col items-center justify-center text-[8px] text-red-500 font-bold uppercase p-1 text-center bg-red-950/20 w-full h-full">
+                                  <span>No cover</span>
+                                </div>
+                              )}
+                            </div>
+                            <div className="space-y-1 min-w-0 flex-grow">
+                              <h4 className="text-white font-bold text-sm truncate" title={title}>{title}</h4>
+                              <div className="flex items-center gap-2">
+                                <span className="text-[9px] uppercase tracking-wider text-dark-400 font-semibold">{row.platform}</span>
+                                <span className={`text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full ${getStatusColor(row.status)}`}>
+                                  {translateStatus(row.status)}
+                                </span>
+                              </div>
+                              {(!row.cover_image_url || row.thumbnailStatus === 'failed') && (
+                                <button
+                                  onClick={() => handleOpenEditVideo(row)}
+                                  className="text-[9px] uppercase font-bold tracking-wider text-primary-400 hover:text-primary-300 block hover:underline"
+                                >
+                                  [Upload Cover]
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                          
+                          <div className="text-[11px] text-dark-400 border-t border-primary-900/5 pt-2 flex justify-between items-center">
+                            <span>Created: {new Date(row.createdAt).toLocaleDateString(isNepali ? 'ne-NP' : 'en-US')}</span>
+                          </div>
+
+                          {/* Actions block with 44px min touch heights */}
+                          <div className="flex justify-end gap-2 pt-2 border-t border-primary-900/10">
+                            {row.status === 'draft' ? (
+                              <button
+                                onClick={() => handleUpdateStatus(row.id, 'social_video', 'published')}
+                                disabled={actionLoadingId === row.id}
+                                className="p-2.5 border border-green-900/50 hover:bg-green-900/20 text-green-400 rounded-sm transition-all flex items-center justify-center min-w-[36px] min-h-[36px]"
+                                title={isNepali ? 'प्रकाशित गर्नुहोस्' : 'Publish'}
+                              >
+                                <Check size={15} />
+                              </button>
+                            ) : (
+                              <button
+                                onClick={() => handleUpdateStatus(row.id, 'social_video', 'draft')}
+                                disabled={actionLoadingId === row.id}
+                                className="p-2.5 border border-yellow-900/50 hover:bg-yellow-900/20 text-yellow-400 rounded-sm transition-all flex items-center justify-center min-w-[36px] min-h-[36px]"
+                                title={isNepali ? 'ड्राफ्टमा राख्नुहोस्' : 'Keep Draft'}
+                              >
+                                <Clock size={15} />
+                              </button>
+                            )}
+                            <button
+                              onClick={() => handleRefreshCover(row)}
+                              disabled={actionLoadingId !== null}
+                              className="p-2.5 border border-primary-900/50 hover:bg-primary-900/20 text-primary-400 rounded-sm transition-all flex items-center justify-center min-w-[36px] min-h-[36px]"
+                              title={isNepali ? 'कभर रिफ्रेस गर्नुहोस्' : 'Refresh Cover'}
+                            >
+                              <RefreshCw size={15} className={actionLoadingId === row.id ? 'animate-spin' : ''} />
+                            </button>
+                            <button
+                              onClick={() => handleOpenEditVideo(row)}
+                              disabled={actionLoadingId === row.id}
+                              className="p-2.5 border border-primary-900/50 hover:bg-primary-900/20 text-primary-400 rounded-sm transition-all flex items-center justify-center min-w-[36px] min-h-[36px]"
+                              title={t('editVideo')}
+                            >
+                              <Edit size={15} />
+                            </button>
+                            <button
+                              onClick={() => setDeleteConfirm({ id: row.id, type: 'social_video' })}
+                              disabled={actionLoadingId === row.id}
+                              className="p-2.5 border border-red-955 bg-red-950/20 hover:bg-red-900/40 text-red-500 rounded-sm transition-all flex items-center justify-center min-w-[36px] min-h-[36px]"
+                              title={t('delete')}
+                            >
+                              <Trash2 size={15} />
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })
+                  )}
                 </div>
               </div>
             )}
@@ -1257,7 +1579,7 @@ export default function AdminPage({ params: { locale } }) {
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 overflow-y-auto">
           <div className="fixed inset-0 bg-black/80 backdrop-blur-sm" onClick={() => setVideoModalOpen(false)} />
           
-          <div className="relative w-full max-w-xl bg-dark-900 border border-primary-900/40 rounded-sm p-6 sm:p-8 shadow-2xl z-10 my-8">
+          <div className="relative w-[calc(100vw-24px)] sm:w-full sm:max-w-xl bg-dark-900 border border-primary-900/40 rounded-sm p-5 sm:p-8 shadow-2xl z-10 my-4 max-h-[calc(100dvh-24px)] overflow-y-auto">
             {/* Close button */}
             <button
               onClick={() => setVideoModalOpen(false)}

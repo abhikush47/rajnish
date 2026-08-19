@@ -103,7 +103,7 @@ export default function ConnectModal({ isOpen, onClose }) {
           animate={{ scale: 1, opacity: 1, y: 0 }}
           exit={{ scale: 0.95, opacity: 0, y: 20 }}
           transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
-          className="relative w-full max-w-md bg-dark-900 border border-primary-900/40 rounded-sm shadow-2xl p-8 z-10"
+          className="relative w-[calc(100vw-24px)] sm:w-full sm:max-w-md bg-dark-900 border border-primary-900/40 rounded-sm shadow-2xl p-6 sm:p-8 z-10 max-h-[calc(100dvh-24px)] overflow-y-auto"
         >
           {/* Close button */}
           <button
@@ -159,7 +159,7 @@ export default function ConnectModal({ isOpen, onClose }) {
                 </div>
 
                 {/* Palika & Ward */}
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-xs font-bold uppercase tracking-widest text-dark-300 mb-2">
                       {t('palika')} *

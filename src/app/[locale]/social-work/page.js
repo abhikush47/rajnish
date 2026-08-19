@@ -264,7 +264,7 @@ export default function SocialWorkPage({ params: { locale } }) {
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 20 }}
               transition={{ type: 'spring', damping: 25, stiffness: 220 }}
-              className="relative w-full max-w-2xl bg-dark-900 border border-primary-900/40 rounded-sm overflow-hidden shadow-2xl z-10 flex flex-col"
+              className="relative w-[calc(100vw-24px)] sm:w-full sm:max-w-2xl bg-dark-900 border border-primary-900/40 rounded-sm overflow-hidden shadow-2xl z-10 flex flex-col max-h-[calc(100dvh-24px)] overflow-y-auto"
             >
               {/* Close button */}
               <button
