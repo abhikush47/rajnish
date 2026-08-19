@@ -126,11 +126,11 @@ export default function Navbar({ locale }) {
         {/* Top accent bar */}
         <div className="h-0.5 w-full bg-gradient-to-r from-primary-950 via-primary-600 to-primary-950" />
 
-        <nav className="container-custom">
+        <nav className="container-custom header-inner">
           <div className="flex items-center justify-between h-16 lg:h-18">
 
             {/* Logo */}
-            <Link href={base} className="flex items-center gap-3 group flex-shrink-0">
+            <Link href={base} className="flex items-center gap-3 group flex-shrink-0 logo-responsive">
               <div className="relative">
                 <div className="w-9 h-9 bg-primary-700 rounded-sm flex items-center justify-center group-hover:bg-primary-600 transition-colors duration-200 shadow-red-glow">
                   <span className="text-white font-display text-xl tracking-tight">R</span>
@@ -228,7 +228,7 @@ export default function Navbar({ locale }) {
               {/* Mobile menu button (☰) */}
               <button
                 onClick={() => setIsOpen(!isOpen)}
-                className="lg:hidden flex items-center justify-center w-9 h-9 border border-primary-800/60 rounded-sm text-white hover:bg-primary-900/20 transition-colors duration-200"
+                className="lg:hidden flex items-center justify-center w-9 h-9 border border-primary-800/60 rounded-sm text-white hover:bg-primary-900/20 transition-colors duration-200 mobile-menu-button"
                 aria-label="Toggle menu"
               >
                 <AnimatePresence mode="wait">

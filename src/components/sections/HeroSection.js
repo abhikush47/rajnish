@@ -33,13 +33,18 @@ function Counter({ end, suffix = '', duration = 2 }) {
   const [started, setStarted] = useState(false);
 
   useEffect(() => {
+    if (started) return;
     const observer = new IntersectionObserver(
-      ([entry]) => { if (entry.isIntersecting) setStarted(true); },
-      { threshold: 0.5 }
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setStarted(true);
+        }
+      },
+      { threshold: 0.1 }
     );
     if (ref.current) observer.observe(ref.current);
     return () => observer.disconnect();
-  }, []);
+  }, [started]);
 
   useEffect(() => {
     if (!started) return;
@@ -54,7 +59,7 @@ function Counter({ end, suffix = '', duration = 2 }) {
     return () => clearInterval(timer);
   }, [started, end, duration]);
 
-  return <span>{count.toLocaleString()}{suffix}</span>;
+  return <span ref={ref}>{count.toLocaleString()}{suffix}</span>;
 }
 
 export default function HeroSection({ locale }) {
@@ -79,10 +84,10 @@ export default function HeroSection({ locale }) {
   }));
 
   const stats = [
-    { value: 500, suffix: '+', label: tStats('volunteers') },
-    { value: 25, suffix: '+', label: tStats('villages') },
-    { value: 12, suffix: '', label: tStats('programs') },
-    { value: 2000, suffix: '+', label: tStats('youth') },
+    { value: 100, suffix: '+', label: isNepali ? "स्वयंसेवक" : "VOLUNTEERS" },
+    { value: 10, suffix: '+', label: isNepali ? "गाउँहरू" : "VILLAGES" },
+    { value: 10, suffix: '+', label: isNepali ? "कार्यक्रमहरू" : "PROGRAMS" },
+    { value: 150, suffix: '+', label: isNepali ? "लाभान्वित युवा" : "YOUTH BENEFITED" },
   ];
 
   const containerVariants = {
@@ -108,7 +113,7 @@ export default function HeroSection({ locale }) {
       className="relative min-h-screen flex items-center justify-center overflow-hidden bg-dark-950"
     >
       {/* Background layers */}
-      <motion.div style={{ y }} className="absolute inset-0 pointer-events-none">
+      <motion.div style={{ y }} className="absolute inset-0 pointer-events-none decorative-element">
         {/* Deep red radial gradient */}
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_80%_80%_at_50%_-20%,rgba(200,13,13,0.15),transparent)]" />
         {/* Secondary glow */}
@@ -133,7 +138,7 @@ export default function HeroSection({ locale }) {
       ))}
 
       {/* Nepal flag-inspired diagonal element */}
-      <div className="absolute top-0 right-0 w-1/3 h-full pointer-events-none overflow-hidden opacity-5">
+      <div className="absolute top-0 right-0 w-1/3 h-full pointer-events-none overflow-hidden opacity-5 decorative-element">
         <div className="absolute top-0 right-0 w-full h-full bg-primary-700 [clip-path:polygon(30%_0%,100%_0%,100%_100%,60%_100%)]" />
       </div>
 
@@ -142,23 +147,23 @@ export default function HeroSection({ locale }) {
         variants={containerVariants}
         initial="hidden"
         animate="visible"
-        className="container-custom relative z-10 pt-24 pb-16"
+        className="container-custom hero-content relative z-10 pt-24 pb-16"
       >
         <div className="max-w-5xl mx-auto text-center">
 
           {/* Badge */}
-          <motion.div variants={itemVariants} className="flex justify-center mb-6">
-            <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-primary-900/40 border border-primary-700/50 rounded-full text-primary-300 text-xs font-bold uppercase tracking-widest">
+          <motion.div variants={itemVariants} className="flex justify-center mb-8">
+            <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-primary-900/40 border border-primary-700/50 rounded-full text-primary-300 text-xs font-bold uppercase tracking-widest location-badge">
               <span className="w-1.5 h-1.5 rounded-full bg-primary-500 animate-pulse" />
               <span className={isNepali ? 'font-nepali' : ''}>{t('badge')}</span>
             </div>
           </motion.div>
 
           {/* Mayor badge */}
-          <motion.div variants={itemVariants} className="flex justify-center mb-8">
+          <motion.div variants={itemVariants} className="flex justify-center mb-12">
             <motion.div
               whileHover={{ scale: 1.05 }}
-              className="inline-flex items-center gap-2 px-5 py-2 bg-primary-700/20 border border-primary-600/40 rounded-sm"
+              className="inline-flex items-center gap-2 px-5 py-2 bg-primary-700/20 border border-primary-600/40 rounded-sm candidate-badge"
             >
               <Star size={13} className="text-gold-400 fill-gold-400" />
               <span className={`text-sm font-bold text-primary-300 tracking-wider ${isNepali ? 'font-nepali' : 'uppercase'}`}>
@@ -171,20 +176,20 @@ export default function HeroSection({ locale }) {
           {/* Prefix text */}
           <motion.p
             variants={itemVariants}
-            className={`text-dark-400 text-lg mb-2 tracking-widest ${isNepali ? 'font-nepali' : 'font-body'}`}
+            className={`text-dark-400 text-lg mb-3 tracking-widest ${isNepali ? 'font-nepali' : 'font-body'}`}
           >
             {t('namePrefix')}
           </motion.p>
 
           {/* Name — big display */}
-          <motion.div variants={itemVariants} className="mb-4">
+          <motion.div variants={itemVariants} className="mb-10 hero-name">
             {isNepali ? (
               <h1 className="font-nepali text-5xl sm:text-8xl md:text-9xl font-black text-white leading-none tracking-tight">
                 <span className="text-gradient">{t('name')}</span>
               </h1>
             ) : (
               <h1
-                className="font-display text-6xl sm:text-9xl md:text-[11rem] text-white leading-none tracking-tight glitch"
+                className="font-display text-6xl sm:text-9xl md:text-[11rem] text-white leading-none tracking-tight glitch hero-name-primary"
                 data-text="RAJNISH"
               >
                 <span className="text-gradient">RAJNISH</span>
@@ -195,7 +200,7 @@ export default function HeroSection({ locale }) {
                 initial={{ scaleX: 0 }}
                 animate={{ scaleX: 1 }}
                 transition={{ delay: 0.8, duration: 0.6 }}
-                className="font-display text-4xl sm:text-6xl md:text-7xl text-dark-400 tracking-widest origin-left"
+                className="font-display text-4xl sm:text-6xl md:text-7xl text-dark-400 tracking-widest origin-left hero-name-secondary"
               >
                 KUSHWAHA
               </motion.div>
@@ -203,7 +208,7 @@ export default function HeroSection({ locale }) {
           </motion.div>
 
           {/* Tagline */}
-          <motion.div variants={itemVariants} className="mb-4">
+          <motion.div variants={itemVariants} className="mb-7 hero-tagline">
             <div className="flex items-center justify-center gap-3">
               <div className="h-px w-16 bg-gradient-to-r from-transparent to-primary-600" />
               <p className={`text-primary-300 font-semibold tracking-widest text-sm sm:text-base ${isNepali ? 'font-nepali' : 'uppercase'}`}>
@@ -216,17 +221,17 @@ export default function HeroSection({ locale }) {
           {/* Description */}
           <motion.p
             variants={itemVariants}
-            className={`text-dark-300 text-base sm:text-lg leading-relaxed max-w-2xl mx-auto mb-10 ${isNepali ? 'font-nepali' : ''}`}
+            className={`text-dark-300 text-base sm:text-lg leading-relaxed max-w-2xl mx-auto mb-10 hero-description ${isNepali ? 'font-nepali' : ''}`}
           >
             {t('description')}
           </motion.p>
 
           {/* CTAs */}
-          <motion.div variants={itemVariants} className="flex flex-col sm:flex-row gap-4 justify-center mb-16">
+          <motion.div variants={itemVariants} className="flex flex-col sm:flex-row gap-4 justify-center mb-[60px] hero-actions">
             <motion.div whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}>
               <button
                 onClick={() => setIsConnectOpen(true)}
-                className="btn-primary text-sm uppercase tracking-widest px-8 py-3.5 shadow-red-glow flex items-center gap-2 border border-primary-500/20"
+                className="btn-primary text-sm uppercase tracking-widest px-8 py-3.5 shadow-red-glow flex items-center justify-center gap-2 border border-primary-500/20 cta-button"
               >
                 <Users size={15} />
                 <span className={isNepali ? 'font-nepali' : ''}>{tConnect('cta')}</span>
@@ -235,7 +240,7 @@ export default function HeroSection({ locale }) {
             <motion.div whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}>
               <Link
                 href={`${base}/campaigns`}
-                className="btn-outline text-sm uppercase tracking-widest px-8 py-3.5"
+                className="btn-outline text-sm uppercase tracking-widest px-8 py-3.5 flex items-center justify-center gap-2 cta-button"
               >
                 <Zap size={15} />
                 <span className={isNepali ? 'font-nepali' : ''}>{t('cta1')}</span>
@@ -244,7 +249,7 @@ export default function HeroSection({ locale }) {
             <motion.div whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}>
               <Link
                 href={`${base}/volunteer`}
-                className="btn-outline text-sm uppercase tracking-widest px-8 py-3.5"
+                className="btn-outline text-sm uppercase tracking-widest px-8 py-3.5 flex items-center justify-center gap-2 cta-button"
               >
                 <ChevronRight size={15} />
                 <span className={isNepali ? 'font-nepali' : ''}>{t('cta2')}</span>
@@ -255,17 +260,17 @@ export default function HeroSection({ locale }) {
           {/* Stats bar */}
           <motion.div
             variants={itemVariants}
-            className="grid grid-cols-2 md:grid-cols-4 gap-px bg-primary-900/20 border border-primary-900/30 rounded-sm overflow-hidden"
+            className="grid grid-cols-2 md:grid-cols-4 gap-px bg-primary-900/20 border border-primary-900/30 rounded-sm overflow-hidden stats-section stats-grid"
           >
             {stats.map((stat, i) => (
               <div
                 key={i}
                 className="bg-dark-950/80 backdrop-blur-sm px-6 py-6 text-center hover:bg-primary-900/10 transition-colors duration-300"
               >
-                <div className="text-3xl sm:text-4xl font-display text-white mb-1 animate-glow">
+                <div className="text-3xl sm:text-4xl font-display text-white mb-1 animate-glow stat-number">
                   <Counter end={stat.value} suffix={stat.suffix} duration={2.5} />
                 </div>
-                <div className={`text-xs text-primary-500 font-semibold uppercase tracking-widest ${isNepali ? 'font-nepali' : ''}`}>
+                <div className={`text-xs text-primary-500 font-semibold uppercase tracking-widest stat-label ${isNepali ? 'font-nepali' : ''}`}>
                   {stat.label}
                 </div>
               </div>

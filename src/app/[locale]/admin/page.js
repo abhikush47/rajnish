@@ -26,7 +26,8 @@ import {
   Edit,
   Play,
   Menu,
-  Globe
+  Globe,
+  Lightbulb
 } from 'lucide-react';
 
 export default function AdminPage({ params: { locale } }) {
@@ -46,7 +47,7 @@ export default function AdminPage({ params: { locale } }) {
   const [loading, setLoading] = useState(true);
   const [authError, setAuthError] = useState(null);
   const [configError, setConfigError] = useState(null);
-  const [activeTab, setActiveTab] = useState('dashboard'); // dashboard, connect, volunteers, feedback, videos
+  const [activeTab, setActiveTab] = useState('dashboard'); // dashboard, connect, volunteers, feedback, videos, youth_ideas
   const [isAdminMenuOpen, setIsAdminMenuOpen] = useState(false);
   
   // Data State
@@ -54,10 +55,21 @@ export default function AdminPage({ params: { locale } }) {
     connect_requests: [],
     volunteers: [],
     feedback: [],
-    social_videos: []
+    social_videos: [],
+    youth_ideas: []
   });
   const [dataLoading, setDataLoading] = useState(false);
   const [actionLoadingId, setActionLoadingId] = useState(null);
+
+  // Youth Idea Modal States
+  const [selectedYouthIdea, setSelectedYouthIdea] = useState(null);
+  const [updatingYouthIdea, setUpdatingYouthIdea] = useState(false);
+  const [tempStatus, setTempStatus] = useState('');
+  const [tempAdminNote, setTempAdminNote] = useState('');
+  const [youthIdeasSearch, setYouthIdeasSearch] = useState('');
+  const [youthIdeasStatusFilter, setYouthIdeasStatusFilter] = useState('all');
+  const [youthIdeasCategoryFilter, setYouthIdeasCategoryFilter] = useState('all');
+  const [youthIdeasLangFilter, setYouthIdeasLangFilter] = useState('all');
 
   // Unified deletion state
   const [deleteConfirm, setDeleteConfirm] = useState(null); // { id, type }
@@ -174,7 +186,7 @@ export default function AdminPage({ params: { locale } }) {
     setLoading(true);
     try {
       await signOut(auth);
-      setData({ connect_requests: [], volunteers: [], feedback: [], social_videos: [] });
+      setData({ connect_requests: [], volunteers: [], feedback: [], social_videos: [], youth_ideas: [] });
     } catch (error) {
       console.error('Logout error:', error);
     } finally {
@@ -216,14 +228,24 @@ export default function AdminPage({ params: { locale } }) {
     const { id, type } = deleteConfirm;
     setActionLoadingId(id);
     try {
-      const res = await fetch('/api/admin/delete', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({ id, type })
-      });
+      let res;
+      if (type === 'youth_idea') {
+        res = await fetch(`/api/admin/youth-ideas/${id}`, {
+          method: 'DELETE',
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+      } else {
+        res = await fetch('/api/admin/delete', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({ id, type })
+        });
+      }
 
       if (res.ok) {
         await fetchData();
@@ -237,6 +259,36 @@ export default function AdminPage({ params: { locale } }) {
       alert('Error deleting record');
     } finally {
       setActionLoadingId(null);
+    }
+  };
+
+  // Update Youth Idea details status & admin_note
+  const handleSaveYouthIdeaUpdate = async (id, status, admin_note) => {
+    if (!token) return;
+    setUpdatingYouthIdea(true);
+    try {
+      const res = await fetch(`/api/admin/youth-ideas/${id}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ status, admin_note })
+      });
+
+      if (res.ok) {
+        const result = await res.json();
+        setSelectedYouthIdea(null);
+        await fetchData();
+      } else {
+        const err = await res.json();
+        alert(err.error || 'Failed to update youth idea');
+      }
+    } catch (error) {
+      console.error('Update youth idea error:', error);
+      alert('Error updating youth idea');
+    } finally {
+      setUpdatingYouthIdea(false);
     }
   };
 
@@ -678,12 +730,14 @@ export default function AdminPage({ params: { locale } }) {
   const totalVolunteers = data.volunteers?.length || 0;
   const totalFeedback = data.feedback?.length || 0;
   const totalVideos = data.social_videos?.length || 0;
+  const totalYouthIdeas = data.youth_ideas?.length || 0;
 
   // Filter lists based on tab
   const recentSubmissions = [
     ...(data.connect_requests || []).map(r => ({ ...r, type: 'connect', typeLabel: t('tabs.connect') })),
     ...(data.volunteers || []).map(v => ({ ...v, type: 'volunteer', typeLabel: t('tabs.volunteers') })),
-    ...(data.feedback || []).map(f => ({ ...f, type: 'feedback', typeLabel: t('tabs.feedback') }))
+    ...(data.feedback || []).map(f => ({ ...f, type: 'feedback', typeLabel: t('tabs.feedback') })),
+    ...(data.youth_ideas || []).map(y => ({ ...y, type: 'youth_idea', typeLabel: isNepali ? 'युवा विचार' : 'Youth Idea' }))
   ].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)).slice(0, 5);
 
   return (
@@ -784,7 +838,8 @@ export default function AdminPage({ params: { locale } }) {
                       { id: 'connect', label: t('tabs.connect'), icon: UserCheck },
                       { id: 'volunteers', label: t('tabs.volunteers'), icon: Users },
                       { id: 'feedback', label: t('tabs.feedback'), icon: MessageSquare },
-                      { id: 'videos', label: t('socialVideos'), icon: Play }
+                      { id: 'videos', label: t('socialVideos'), icon: Play },
+                      { id: 'youth_ideas', label: isNepali ? 'युवा विचार' : 'Youth Ideas', icon: Lightbulb }
                     ].map(tab => {
                       const Icon = tab.icon;
                       return (
@@ -843,7 +898,8 @@ export default function AdminPage({ params: { locale } }) {
               { id: 'connect', label: t('tabs.connect'), icon: UserCheck },
               { id: 'volunteers', label: t('tabs.volunteers'), icon: Users },
               { id: 'feedback', label: t('tabs.feedback'), icon: MessageSquare },
-              { id: 'videos', label: t('socialVideos'), icon: Play }
+              { id: 'videos', label: t('socialVideos'), icon: Play },
+              { id: 'youth_ideas', label: isNepali ? 'युवा विचार' : 'Youth Ideas', icon: Lightbulb }
             ].map(tab => {
               const Icon = tab.icon;
               return (
@@ -870,12 +926,13 @@ export default function AdminPage({ params: { locale } }) {
             {activeTab === 'dashboard' && (
               <div className="space-y-8">
                 {/* Stats row (responsive 1-2-4 columns mapping) */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
                   {[
                     { label: t('totalConnect'), value: totalConnect, icon: UserCheck, tab: 'connect' },
                     { label: t('totalVolunteers'), value: totalVolunteers, icon: Users, tab: 'volunteers' },
                     { label: t('totalFeedback'), value: totalFeedback, icon: MessageSquare, tab: 'feedback' },
-                    { label: t('totalVideos'), value: totalVideos, icon: Play, tab: 'videos' }
+                    { label: t('totalVideos'), value: totalVideos, icon: Play, tab: 'videos' },
+                    { label: isNepali ? 'युवा विचार' : 'Youth Ideas', value: totalYouthIdeas, icon: Lightbulb, tab: 'youth_ideas' }
                   ].map(stat => (
                     <div 
                       key={stat.label}
@@ -1530,6 +1587,261 @@ export default function AdminPage({ params: { locale } }) {
               </div>
             )}
 
+            {/* Tab 6: Youth Ideas Panel */}
+            {activeTab === 'youth_ideas' && (
+              <div className="space-y-6">
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                  <h2 className="text-white text-xl font-bold uppercase tracking-wide font-display">
+                    {isNepali ? 'युवा विचार व्यवस्थापन' : 'Youth Ideas Management'}
+                  </h2>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-dark-400">
+                      {isNepali 
+                        ? `${(data.youth_ideas || []).filter(yi => {
+                            const searchLower = youthIdeasSearch.toLowerCase();
+                            const matchesSearch = (yi.name || '').toLowerCase().includes(searchLower) || (yi.idea || '').toLowerCase().includes(searchLower) || (yi.location || '').toLowerCase().includes(searchLower);
+                            const matchesStatus = youthIdeasStatusFilter === 'all' || yi.status === youthIdeasStatusFilter;
+                            const matchesCategory = youthIdeasCategoryFilter === 'all' || yi.category === youthIdeasCategoryFilter;
+                            const matchesLang = youthIdeasLangFilter === 'all' || yi.language === youthIdeasLangFilter;
+                            return matchesSearch && matchesStatus && matchesCategory && matchesLang;
+                          }).length} वटा विचारहरू भेटिए` 
+                        : `${(data.youth_ideas || []).filter(yi => {
+                            const searchLower = youthIdeasSearch.toLowerCase();
+                            const matchesSearch = (yi.name || '').toLowerCase().includes(searchLower) || (yi.idea || '').toLowerCase().includes(searchLower) || (yi.location || '').toLowerCase().includes(searchLower);
+                            const matchesStatus = youthIdeasStatusFilter === 'all' || yi.status === youthIdeasStatusFilter;
+                            const matchesCategory = youthIdeasCategoryFilter === 'all' || yi.category === youthIdeasCategoryFilter;
+                            const matchesLang = youthIdeasLangFilter === 'all' || yi.language === youthIdeasLangFilter;
+                            return matchesSearch && matchesStatus && matchesCategory && matchesLang;
+                          }).length} ideas found`}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Filters Row */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 bg-dark-950 p-4 rounded-sm border border-primary-900/10">
+                  {/* Search Input */}
+                  <div className="relative">
+                    <input
+                      type="text"
+                      value={youthIdeasSearch}
+                      onChange={(e) => setYouthIdeasSearch(e.target.value)}
+                      placeholder={isNepali ? 'खोज्नुहोस् (नाम, विचार, ठाउँ...)' : 'Search (name, idea, location...)'}
+                      className={`w-full bg-dark-900 border border-primary-900/40 rounded-sm px-3 py-2.5 text-xs text-white placeholder:text-dark-600 focus:outline-none focus:border-primary-650 min-h-[44px] ${isNepali ? 'font-nepali' : ''}`}
+                    />
+                  </div>
+
+                  {/* Status Filter */}
+                  <div>
+                    <select
+                      value={youthIdeasStatusFilter}
+                      onChange={(e) => setYouthIdeasStatusFilter(e.target.value)}
+                      className={`w-full bg-dark-900 border border-primary-900/40 rounded-sm px-3 py-2.5 text-xs text-white focus:outline-none focus:border-primary-650 min-h-[44px] ${isNepali ? 'font-nepali' : ''}`}
+                    >
+                      <option value="all">{isNepali ? 'सबै अवस्थाहरू' : 'All Statuses'}</option>
+                      <option value="pending">{isNepali ? 'विचाराधीन' : 'Pending'}</option>
+                      <option value="under_review">{isNepali ? 'समीक्षाधीन' : 'Under Review'}</option>
+                      <option value="approved">{isNepali ? 'स्वीकृत' : 'Approved'}</option>
+                      <option value="implemented">{isNepali ? 'कार्यान्वित' : 'Implemented'}</option>
+                      <option value="rejected">{isNepali ? 'अस्वीकृत' : 'Rejected'}</option>
+                    </select>
+                  </div>
+
+                  {/* Category Filter */}
+                  <div>
+                    <select
+                      value={youthIdeasCategoryFilter}
+                      onChange={(e) => setYouthIdeasCategoryFilter(e.target.value)}
+                      className={`w-full bg-dark-900 border border-primary-900/40 rounded-sm px-3 py-2.5 text-xs text-white focus:outline-none focus:border-primary-650 min-h-[44px] ${isNepali ? 'font-nepali' : ''}`}
+                    >
+                      <option value="all">{isNepali ? 'सबै श्रेणीहरू' : 'All Categories'}</option>
+                      <option value="education">{isNepali ? 'शिक्षा' : 'Education'}</option>
+                      <option value="health">{isNepali ? 'स्वास्थ्य' : 'Health'}</option>
+                      <option value="roads">{isNepali ? 'सडक र यातायात' : 'Roads & Transport'}</option>
+                      <option value="employment">{isNepali ? 'रोजगार' : 'Employment'}</option>
+                      <option value="environment">{isNepali ? 'वातावरण' : 'Environment'}</option>
+                      <option value="technology">{isNepali ? 'प्रविधि' : 'Technology'}</option>
+                      <option value="women">{isNepali ? 'महिला अधिकार' : "Women's Rights"}</option>
+                      <option value="agriculture">{isNepali ? 'कृषि' : 'Agriculture'}</option>
+                      <option value="other">{isNepali ? 'अन्य' : 'Other'}</option>
+                    </select>
+                  </div>
+
+                  {/* Language Filter */}
+                  <div>
+                    <select
+                      value={youthIdeasLangFilter}
+                      onChange={(e) => setYouthIdeasLangFilter(e.target.value)}
+                      className={`w-full bg-dark-900 border border-primary-900/40 rounded-sm px-3 py-2.5 text-xs text-white focus:outline-none focus:border-primary-650 min-h-[44px] ${isNepali ? 'font-nepali' : ''}`}
+                    >
+                      <option value="all">{isNepali ? 'सबै भाषाहरू' : 'All Languages'}</option>
+                      <option value="en">{isNepali ? 'अंग्रेजी' : 'English'}</option>
+                      <option value="ne">{isNepali ? 'नेपाली' : 'Nepali'}</option>
+                    </select>
+                  </div>
+                </div>
+
+                {/* Data View */}
+                {(data.youth_ideas || []).filter(yi => {
+                  const searchLower = youthIdeasSearch.toLowerCase();
+                  const matchesSearch = (yi.name || '').toLowerCase().includes(searchLower) || (yi.idea || '').toLowerCase().includes(searchLower) || (yi.location || '').toLowerCase().includes(searchLower) || (yi.contact_number || '').toLowerCase().includes(searchLower);
+                  const matchesStatus = youthIdeasStatusFilter === 'all' || yi.status === youthIdeasStatusFilter;
+                  const matchesCategory = youthIdeasCategoryFilter === 'all' || yi.category === youthIdeasCategoryFilter;
+                  const matchesLang = youthIdeasLangFilter === 'all' || yi.language === youthIdeasLangFilter;
+                  return matchesSearch && matchesStatus && matchesCategory && matchesLang;
+                }).length === 0 ? (
+                  <div className="text-center py-12 border border-dashed border-primary-900/20 rounded-sm bg-dark-950/30">
+                    <p className={`text-dark-500 text-sm ${isNepali ? 'font-nepali' : ''}`}>
+                      {isNepali ? 'कुनै युवा विचारहरू फेला परेन।' : 'No youth ideas found.'}
+                    </p>
+                  </div>
+                ) : (
+                  <>
+                    {/* Desktop Table view (hidden < 768px) */}
+                    <div className="hidden md:block overflow-x-auto">
+                      <table className="w-full border-collapse text-left text-xs">
+                        <thead>
+                          <tr className="border-b border-primary-900/30 text-dark-400 font-bold uppercase tracking-wider">
+                            <th className="py-3 px-4">{isNepali ? 'नाम' : 'Name'}</th>
+                            <th className="py-3 px-4">{isNepali ? 'श्रेणी' : 'Category'}</th>
+                            <th className="py-3 px-4 w-1/3">{isNepali ? 'विचार' : 'Idea'}</th>
+                            <th className="py-3 px-4">{isNepali ? 'ठाउँ' : 'Location'}</th>
+                            <th className="py-3 px-4">{isNepali ? 'सम्पर्क' : 'Contact'}</th>
+                            <th className="py-3 px-4">{isNepali ? 'अवस्था' : 'Status'}</th>
+                            <th className="py-3 px-4 text-right">{isNepali ? 'कार्य' : 'Actions'}</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-primary-900/10 text-white">
+                          {(data.youth_ideas || []).filter(yi => {
+                            const searchLower = youthIdeasSearch.toLowerCase();
+                            const matchesSearch = (yi.name || '').toLowerCase().includes(searchLower) || (yi.idea || '').toLowerCase().includes(searchLower) || (yi.location || '').toLowerCase().includes(searchLower) || (yi.contact_number || '').toLowerCase().includes(searchLower);
+                            const matchesStatus = youthIdeasStatusFilter === 'all' || yi.status === youthIdeasStatusFilter;
+                            const matchesCategory = youthIdeasCategoryFilter === 'all' || yi.category === youthIdeasCategoryFilter;
+                            const matchesLang = youthIdeasLangFilter === 'all' || yi.language === youthIdeasLangFilter;
+                            return matchesSearch && matchesStatus && matchesCategory && matchesLang;
+                          }).map(row => (
+                            <tr key={row.id} className="hover:bg-primary-900/5 transition-all">
+                              <td className="py-3.5 px-4 font-semibold">{row.name}</td>
+                              <td className="py-3.5 px-4 uppercase tracking-wider text-[10px] text-primary-400 font-bold">
+                                {row.category}
+                              </td>
+                              <td className="py-3.5 px-4 text-dark-300 max-w-xs truncate" title={row.idea}>
+                                {row.idea}
+                              </td>
+                              <td className="py-3.5 px-4 text-dark-400">
+                                {row.location}{row.ward ? `-${row.ward}` : ''}
+                              </td>
+                              <td className="py-3.5 px-4 text-dark-400 font-mono">{row.contact_number}</td>
+                              <td className="py-3.5 px-4">
+                                <span className={`inline-block px-2.5 py-1 text-[9px] font-bold uppercase tracking-widest rounded-sm ${
+                                  row.status === 'implemented' ? 'bg-green-950/40 text-green-400 border border-green-800/40' :
+                                  row.status === 'approved' ? 'bg-primary-950/40 text-primary-400 border border-primary-800/40' :
+                                  row.status === 'under_review' ? 'bg-yellow-950/40 text-yellow-400 border border-yellow-800/40' :
+                                  row.status === 'rejected' ? 'bg-red-950/40 text-red-400 border border-red-800/40' :
+                                  'bg-dark-900 text-dark-400 border border-dark-700/40'
+                                }`}>
+                                  {row.status}
+                                </span>
+                              </td>
+                              <td className="py-3.5 px-4 text-right">
+                                <div className="flex justify-end gap-1.5">
+                                  <button
+                                    onClick={() => {
+                                      setSelectedYouthIdea(row);
+                                      setTempStatus(row.status || 'pending');
+                                      setTempAdminNote(row.admin_note || '');
+                                    }}
+                                    className="p-2 border border-primary-900/50 hover:bg-primary-900/20 text-primary-400 rounded-sm transition-all flex items-center justify-center min-w-[36px] min-h-[36px]"
+                                    title={isNepali ? 'विवरण हेर्नुहोस्' : 'View Details'}
+                                  >
+                                    <Eye size={14} />
+                                  </button>
+                                  <button
+                                    onClick={() => setDeleteConfirm({ id: row.id, type: 'youth_idea' })}
+                                    className="p-2 border border-red-955 bg-red-950/20 hover:bg-red-900/40 text-red-500 rounded-sm transition-all flex items-center justify-center min-w-[36px] min-h-[36px]"
+                                    title={isNepali ? 'मेट्नुहोस्' : 'Delete'}
+                                  >
+                                    <Trash2 size={14} />
+                                  </button>
+                                </div>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+
+                    {/* Mobile Card view (hidden >= 768px) */}
+                    <div className="md:hidden space-y-4">
+                      {(data.youth_ideas || []).filter(yi => {
+                        const searchLower = youthIdeasSearch.toLowerCase();
+                        const matchesSearch = (yi.name || '').toLowerCase().includes(searchLower) || (yi.idea || '').toLowerCase().includes(searchLower) || (yi.location || '').toLowerCase().includes(searchLower) || (yi.contact_number || '').toLowerCase().includes(searchLower);
+                        const matchesStatus = youthIdeasStatusFilter === 'all' || yi.status === youthIdeasStatusFilter;
+                        const matchesCategory = youthIdeasCategoryFilter === 'all' || yi.category === youthIdeasCategoryFilter;
+                        const matchesLang = youthIdeasLangFilter === 'all' || yi.language === youthIdeasLangFilter;
+                        return matchesSearch && matchesStatus && matchesCategory && matchesLang;
+                      }).map(row => (
+                        <div key={row.id} className="bg-dark-950 border border-primary-900/10 p-4 rounded-sm space-y-3">
+                          <div className="flex justify-between items-start">
+                            <div>
+                              <h4 className="text-white text-sm font-bold">{row.name}</h4>
+                              <span className="text-[10px] text-primary-400 uppercase tracking-widest font-bold">
+                                {row.category}
+                              </span>
+                            </div>
+                            <span className={`inline-block px-2 py-0.5 text-[8px] font-bold uppercase tracking-widest rounded-sm ${
+                              row.status === 'implemented' ? 'bg-green-950/40 text-green-400 border border-green-800/40' :
+                              row.status === 'approved' ? 'bg-primary-950/40 text-primary-400 border border-primary-800/40' :
+                              row.status === 'under_review' ? 'bg-yellow-950/40 text-yellow-400 border border-yellow-800/40' :
+                              row.status === 'rejected' ? 'bg-red-950/40 text-red-400 border border-red-800/40' :
+                              'bg-dark-900 text-dark-400 border border-dark-700/40'
+                            }`}>
+                              {row.status}
+                            </span>
+                          </div>
+
+                          <p className="text-dark-300 text-xs line-clamp-3 leading-relaxed">
+                            {row.idea}
+                          </p>
+
+                          <div className="grid grid-cols-2 gap-2 text-[10px] text-dark-400 pt-2 border-t border-primary-900/5">
+                            <div>
+                              <strong className="block text-dark-500 uppercase text-[8px]">{isNepali ? 'ठाउँ' : 'Location'}</strong>
+                              <span>{row.location}{row.ward ? `-${row.ward}` : ''}</span>
+                            </div>
+                            <div>
+                              <strong className="block text-dark-500 uppercase text-[8px]">{isNepali ? 'सम्पर्क' : 'Contact'}</strong>
+                              <span className="font-mono">{row.contact_number}</span>
+                            </div>
+                          </div>
+
+                          <div className="flex justify-end gap-2 pt-2 border-t border-primary-900/10">
+                            <button
+                              onClick={() => {
+                                setSelectedYouthIdea(row);
+                                setTempStatus(row.status || 'pending');
+                                setTempAdminNote(row.admin_note || '');
+                              }}
+                              className="px-4 py-2 border border-primary-900/50 hover:bg-primary-900/20 text-primary-400 rounded-sm text-[10px] font-bold uppercase tracking-widest flex items-center gap-1 min-h-[44px]"
+                            >
+                              <Eye size={12} />
+                              <span>{isNepali ? 'विवरण' : 'View'}</span>
+                            </button>
+                            <button
+                              onClick={() => setDeleteConfirm({ id: row.id, type: 'youth_idea' })}
+                              className="px-4 py-2 border border-red-955 bg-red-950/20 hover:bg-red-900/40 text-red-500 rounded-sm text-[10px] font-bold uppercase tracking-widest flex items-center gap-1 min-h-[44px]"
+                            >
+                              <Trash2 size={12} />
+                              <span>{isNepali ? 'हटाउनुहोस्' : 'Delete'}</span>
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </>
+                )}
+              </div>
+            )}
+
           </div>
 
         </div>
@@ -1808,6 +2120,131 @@ export default function AdminPage({ params: { locale } }) {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Youth Idea Edit / Details Modal */}
+      {selectedYouthIdea && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 overflow-y-auto">
+          <div className="fixed inset-0 bg-black/80 backdrop-blur-sm" onClick={() => setSelectedYouthIdea(null)} />
+          
+          <div className="relative w-[calc(100vw-24px)] sm:w-full sm:max-w-xl bg-dark-900 border border-primary-900/40 rounded-sm p-5 sm:p-8 shadow-2xl z-10 my-4 max-h-[calc(100dvh-24px)] overflow-y-auto font-sans">
+            {/* Close button */}
+            <button
+              onClick={() => setSelectedYouthIdea(null)}
+              className="absolute top-4 right-4 text-dark-400 hover:text-white"
+            >
+              <X size={18} />
+            </button>
+
+            <h3 className="text-white text-xl font-bold font-display uppercase tracking-wider mb-6">
+              {isNepali ? 'युवा विचार विवरण' : 'Youth Idea Details'}
+            </h3>
+
+            <div className="space-y-4 text-xs text-dark-300">
+              {/* Category & language */}
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <strong className="block text-dark-500 uppercase text-[9px] mb-1">{isNepali ? 'श्रेणी' : 'Category'}</strong>
+                  <span className="text-primary-400 uppercase tracking-widest font-bold text-[10px] bg-primary-950/20 px-2 py-1 rounded-sm border border-primary-900/20 inline-block">
+                    {selectedYouthIdea.category}
+                  </span>
+                </div>
+                <div>
+                  <strong className="block text-dark-500 uppercase text-[9px] mb-1">{isNepali ? 'भाषा' : 'Language'}</strong>
+                  <span className="text-white uppercase font-bold bg-dark-950 px-2.5 py-1 rounded-sm inline-block">
+                    {selectedYouthIdea.language}
+                  </span>
+                </div>
+              </div>
+
+              {/* Name */}
+              <div>
+                <strong className="block text-dark-500 uppercase text-[9px] mb-1">{isNepali ? 'प्रस्तावकको नाम' : "Submitter's Name"}</strong>
+                <span className="text-white font-semibold text-sm">{selectedYouthIdea.name}</span>
+              </div>
+
+              {/* Location & Contact details */}
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <strong className="block text-dark-500 uppercase text-[9px] mb-1">{isNepali ? 'ठेगाना' : 'Location'}</strong>
+                  <span className="text-white">{selectedYouthIdea.location}{selectedYouthIdea.ward ? `-${selectedYouthIdea.ward}` : ''}</span>
+                </div>
+                <div>
+                  <strong className="block text-dark-500 uppercase text-[9px] mb-1">{isNepali ? 'सम्पर्क नम्बर' : 'Contact Number'}</strong>
+                  <span className="text-white font-mono">{selectedYouthIdea.contact_number}</span>
+                </div>
+              </div>
+
+              {/* Email if present */}
+              {selectedYouthIdea.email && (
+                <div>
+                  <strong className="block text-dark-500 uppercase text-[9px] mb-1">{isNepali ? 'इमेल' : 'Email'}</strong>
+                  <span className="text-white font-mono">{selectedYouthIdea.email}</span>
+                </div>
+              )}
+
+              {/* Idea Text Content */}
+              <div className="bg-dark-950 border border-primary-900/10 p-4 rounded-sm">
+                <strong className="block text-dark-500 uppercase text-[9px] mb-2">{isNepali ? 'विचार' : 'Proposed Idea'}</strong>
+                <p className="text-white text-sm whitespace-pre-wrap leading-relaxed">
+                  {selectedYouthIdea.idea}
+                </p>
+              </div>
+
+              {/* Status Update Select */}
+              <div className="space-y-1.5 pt-2 border-t border-primary-900/10">
+                <label className="text-dark-400 text-xs font-semibold uppercase tracking-wider block">
+                  {isNepali ? 'अवस्था परिवर्तन गर्नुहोस्' : 'Update Status'}
+                </label>
+                <select
+                  value={tempStatus}
+                  onChange={(e) => setTempStatus(e.target.value)}
+                  className="w-full bg-dark-950 border border-primary-950 focus:border-primary-600 focus:outline-none rounded-sm px-4 py-2.5 text-white text-sm"
+                >
+                  <option value="pending">{isNepali ? 'विचाराधीन (Pending)' : 'Pending'}</option>
+                  <option value="under_review">{isNepali ? 'समीक्षाधीन (Under Review)' : 'Under Review'}</option>
+                  <option value="approved">{isNepali ? 'स्वीकृत (Approved)' : 'Approved'}</option>
+                  <option value="implemented">{isNepali ? 'कार्यान्वित (Implemented)' : 'Implemented'}</option>
+                  <option value="rejected">{isNepali ? 'अस्वीकृत (Rejected)' : 'Rejected'}</option>
+                </select>
+              </div>
+
+              {/* Admin note textarea */}
+              <div className="space-y-1.5">
+                <label className="text-dark-400 text-xs font-semibold uppercase tracking-wider block">
+                  {isNepali ? 'आन्तरिक नोट (प्रशासकीय मात्र)' : 'Internal Admin Note (Private)'}
+                </label>
+                <textarea
+                  rows={3}
+                  value={tempAdminNote}
+                  onChange={(e) => setTempAdminNote(e.target.value)}
+                  placeholder={isNepali ? 'यहाँ टिप्पणीहरू लेख्नुहोस्...' : 'Add admin observations, updates or notes here...'}
+                  className="w-full bg-dark-950 border border-primary-950 focus:border-primary-600 focus:outline-none rounded-sm px-4 py-2.5 text-white text-sm resize-none"
+                />
+              </div>
+
+              {/* Save / Actions Buttons */}
+              <div className="flex justify-end gap-3 border-t border-primary-950/40 pt-4 mt-6">
+                <button
+                  type="button"
+                  onClick={() => setSelectedYouthIdea(null)}
+                  className="px-4 py-2 border border-primary-800/60 hover:border-primary-600 rounded-sm text-xs font-bold uppercase tracking-widest text-primary-400 hover:text-primary-300 transition-all duration-200"
+                >
+                  {isNepali ? 'रद्द गर्नुहोस्' : 'Cancel'}
+                </button>
+                <button
+                  type="button"
+                  disabled={updatingYouthIdea}
+                  onClick={() => handleSaveYouthIdeaUpdate(selectedYouthIdea.id, tempStatus, tempAdminNote)}
+                  className="btn-primary flex items-center gap-1.5 px-5 py-2.5 text-xs uppercase tracking-widest shadow-red-glow font-bold"
+                >
+                  {updatingYouthIdea ? <RefreshCw size={12} className="animate-spin" /> : null}
+                  <span>{isNepali ? 'बचत गर्नुहोस्' : 'Save Changes'}</span>
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}

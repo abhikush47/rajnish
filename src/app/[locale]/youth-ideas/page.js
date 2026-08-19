@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTranslations } from 'next-intl';
 import { useForm } from 'react-hook-form';
@@ -9,7 +9,6 @@ import {
   AlertCircle, Sparkles, Clock, BadgeCheck,
   Rocket, Eye, RefreshCw,
 } from 'lucide-react';
-import { saveDoc, fetchDocs } from '@/lib/firestore';
 
 // ─── Category definitions ────────────────────────────────────────────────────
 const categories = {
@@ -154,6 +153,42 @@ const FALLBACK_IDEAS = [
 
 ];
 
+// Animated counter with IntersectionObserver
+function Counter({ end, suffix = '', duration = 1.8 }) {
+  const [count, setCount] = useState(0);
+  const ref = useRef(null);
+  const [started, setStarted] = useState(false);
+
+  useEffect(() => {
+    if (started) return;
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setStarted(true);
+        }
+      },
+      { threshold: 0.1 }
+    );
+    if (ref.current) observer.observe(ref.current);
+    return () => observer.disconnect();
+  }, [started]);
+
+  useEffect(() => {
+    if (!started) return;
+    const startTime = Date.now();
+    const timer = setInterval(() => {
+      const elapsed = (Date.now() - startTime) / 1000;
+      const progress = Math.min(elapsed / duration, 1);
+      const eased = 1 - Math.pow(1 - progress, 3);
+      setCount(Math.floor(eased * end));
+      if (progress >= 1) clearInterval(timer);
+    }, 16);
+    return () => clearInterval(timer);
+  }, [started, end, duration]);
+
+  return <span ref={ref}>{count.toLocaleString()}{suffix}</span>;
+}
+
 // ─── Main Page ────────────────────────────────────────────────────────────────
 export default function YouthIdeasPage({ params: { locale } }) {
   const t = useTranslations('youth');
@@ -165,78 +200,106 @@ export default function YouthIdeasPage({ params: { locale } }) {
   const [selectedCategory, setSelectedCategory] = useState('');
   const [ideas, setIdeas]                   = useState(FALLBACK_IDEAS);
   const [ideasLoading, setIdeasLoading]     = useState(true);
-  const [totalCount, setTotalCount]         = useState(120);
   const [isLive, setIsLive]                 = useState(false);
+  const [successSerialId, setSuccessSerialId] = useState('');
+  const [statsData, setStatsData]           = useState({
+    ideasSubmitted: 120,
+    wardsCovered: 8,
+    implemented: 3
+  });
 
   const { register, handleSubmit, formState: { errors }, reset, watch } = useForm();
   const ideaText = watch('idea', '');
   const cats = isNepali ? categories.ne : categories.en;
 
-  // ── Load recent ideas from Firestore ──
+  // ── Load recent ideas ──
   const loadIdeas = useCallback(async () => {
     setIdeasLoading(true);
     try {
-      const docs = await fetchDocs('youth_ideas', 8);
-      if (docs.length > 0) {
-        setIdeas(docs);
-        setTotalCount(prev => Math.max(prev, docs.length));
-        setIsLive(true);
+      const res = await fetch('/api/youth-ideas');
+      if (res.ok) {
+        const result = await res.json();
+        if (result.success && result.data && result.data.length > 0) {
+          setIdeas(result.data);
+          setIsLive(true);
+        }
       }
     } catch {
-      // Firebase not configured yet — keep fallback data, no error shown
       setIsLive(false);
     } finally {
       setIdeasLoading(false);
     }
   }, []);
 
+  // ── Load stats ──
+  const fetchStats = useCallback(async () => {
+    try {
+      const res = await fetch('/api/youth-ideas/stats');
+      if (res.ok) {
+        const result = await res.json();
+        if (result.success && result.data) {
+          setStatsData({
+            ideasSubmitted: result.data.ideasSubmitted,
+            wardsCovered: result.data.wardsCovered,
+            implemented: result.data.implemented
+          });
+        }
+      }
+    } catch (err) {
+      console.warn('Failed to load stats:', err);
+    }
+  }, []);
+
   // Load on mount
-  useEffect(() => { loadIdeas(); }, [loadIdeas]);
+  useEffect(() => {
+    loadIdeas();
+    fetchStats();
+  }, [loadIdeas, fetchStats]);
 
   // ── Poll every 30s for near-realtime updates ──
   useEffect(() => {
-    const interval = setInterval(loadIdeas, 30000);
+    const interval = setInterval(() => {
+      loadIdeas();
+      fetchStats();
+    }, 30000);
     return () => clearInterval(interval);
-  }, [loadIdeas]);
+  }, [loadIdeas, fetchStats]);
 
   // ── Submit handler ──
   const onSubmit = async (data) => {
+    if (loading) return;
     setLoading(true);
     setError(null);
     try {
-      const docId = await saveDoc('youth_ideas', {
-        name:     data.name,
-        phone:    data.phone    || '',
-        idea:     data.idea,
-        category: selectedCategory || 'other',
-        location: data.location || '',
-        locale,
+      const res = await fetch('/api/youth-ideas', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          name: data.name,
+          location: data.location,
+          ward: data.ward || '',
+          contact: data.phone,
+          email: data.email || '',
+          category: selectedCategory || 'other',
+          language: locale
+        })
       });
 
-      // Optimistically prepend the new idea to the list
-      const newIdea = {
-        id:        docId || `local-${Date.now()}`,
-        name:      data.name,
-        idea:      data.idea,
-        category:  selectedCategory || 'other',
-        location:  data.location || '',
-        status:    'pending',
-        createdAt: new Date().toISOString(),
-      };
-      setIdeas(prev => [newIdea, ...prev.slice(0, 7)]);
-      setTotalCount(prev => prev + 1);
-      setIsLive(true);
-
-      setSubmitted(true);
-      reset();
-      setSelectedCategory('');
+      const result = await res.json();
+      if (res.ok && result.success) {
+        setSuccessSerialId(result.serialId || 'YI-000000');
+        setSubmitted(true);
+        reset();
+        setSelectedCategory('');
+        loadIdeas();
+        fetchStats();
+      } else {
+        setError(result.error || (isNepali ? 'पेश गर्न असक्षम। कृपया पुन: प्रयास गर्नुहोस्।' : 'Unable to submit your idea. Please try again.'));
+      }
     } catch (err) {
-      const isMissingEnv = err.message?.includes('MISSING_ENV');
-      setError(isNepali
-        ? 'विचार पेश गर्न समस्या भयो। पुनः प्रयास गर्नुहोस्।'
-        : isMissingEnv
-          ? 'Firebase not configured. Add your .env.local keys and restart the server.'
-          : 'Failed to submit. Please check your connection and try again.');
+      setError(isNepali ? 'सञ्जाल जडान त्रुटि। कृपया पुन: प्रयास गर्नुहोस्।' : 'Network error. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -283,9 +346,9 @@ export default function YouthIdeasPage({ params: { locale } }) {
             {/* Live stats */}
             <div className="flex justify-center gap-8 mt-8">
               {[
-                { n: totalCount + '+', labelNe: 'विचारहरू', labelEn: 'Ideas Submitted' },
-                { n: '8',              labelNe: 'वडाहरू',   labelEn: 'Wards Covered'   },
-                { n: '3',              labelNe: 'लागू भएका', labelEn: 'Implemented'    },
+                { n: statsData.ideasSubmitted, suffix: '+', labelNe: 'विचारहरू', labelEn: 'Ideas Submitted' },
+                { n: statsData.wardsCovered,   suffix: '',  labelNe: 'वडाहरू',   labelEn: 'Wards Covered'   },
+                { n: statsData.implemented,    suffix: '',  labelNe: 'लागू भएका', labelEn: 'Implemented'    },
               ].map((s, i) => (
                 <motion.div
                   key={i}
@@ -294,7 +357,9 @@ export default function YouthIdeasPage({ params: { locale } }) {
                   transition={{ delay: 0.4 + i * 0.1 }}
                   className="text-center"
                 >
-                  <div className="font-display text-2xl text-primary-400">{s.n}</div>
+                  <div className="font-display text-2xl text-primary-400">
+                    <Counter end={s.n} suffix={s.suffix} duration={1.8} />
+                  </div>
                   <div className={`text-dark-500 text-xs uppercase tracking-widest ${isNepali ? 'font-nepali' : ''}`}>
                     {isNepali ? s.labelNe : s.labelEn}
                   </div>
@@ -317,32 +382,39 @@ export default function YouthIdeasPage({ params: { locale } }) {
                   initial={{ scale: 0.9, opacity: 0 }}
                   animate={{ scale: 1, opacity: 1 }}
                   exit={{ scale: 0.9, opacity: 0 }}
-                  className="card-dark p-12 text-center"
+                  className="card-dark p-8 sm:p-12 text-center border border-primary-900/40 rounded-sm relative"
                 >
-                  <motion.div animate={{ rotate: [0, 10, -10, 0] }} transition={{ duration: 0.5, delay: 0.2 }}>
-                    <CheckCircle2 size={60} className="text-primary-500 mx-auto mb-6" />
+                  <motion.div animate={{ scale: [1, 1.1, 1] }} transition={{ duration: 0.4, delay: 0.1 }}>
+                    <CheckCircle2 size={56} className="text-primary-500 mx-auto mb-5" />
                   </motion.div>
-                  <h2 className={`text-white text-2xl font-bold mb-3 ${isNepali ? 'font-nepali' : ''}`}>
-                    {isNepali ? 'विचार पेश भयो!' : 'Idea Submitted!'}
+                  
+                  <h2 className={`text-white text-xl sm:text-2xl font-bold uppercase tracking-wide mb-4 ${isNepali ? 'font-nepali' : 'font-display'}`}>
+                    {isNepali ? '✓ विचार पेश भयो' : '✓ IDEA SUBMITTED'}
                   </h2>
-                  <p className={`text-dark-400 text-sm mb-3 max-w-sm mx-auto ${isNepali ? 'font-nepali' : ''}`}>
+                  
+                  <p className={`text-dark-300 text-sm mb-6 max-w-sm mx-auto leading-relaxed ${isNepali ? 'font-nepali' : ''}`}>
                     {isNepali
-                      ? 'तपाईंको विचार "विचाराधीन" अवस्थामा छ। हाम्रो टोलीले समीक्षा गरेपछि अवस्था अपडेट हुनेछ।'
-                      : 'Your idea is now "Pending" review. Status will update as our team reviews it.'}
+                      ? 'तपाईंको विचार साझा गर्नुभएकोमा धन्यवाद। तपाईंको सुझाव प्राप्त भएको छ र हाम्रो टोलीद्वारा समीक्षा गरिनेछ।'
+                      : 'Thank you for sharing your idea. Your suggestion has been received and will be reviewed by our team.'}
                   </p>
-                  {/* Status flow explanation */}
-                  <div className="flex items-center justify-center gap-2 mb-8 flex-wrap">
-                    {['pending','reviewed','approved','implemented'].map((s, i, arr) => (
-                      <div key={s} className="flex items-center gap-2">
-                        <StatusBadge status={s} isNepali={isNepali} />
-                        {i < arr.length - 1 && <span className="text-dark-700 text-xs">→</span>}
-                      </div>
-                    ))}
+
+                  {/* ID Wrapper */}
+                  <div className="bg-dark-900 border border-primary-950 p-4 rounded-sm max-w-xs mx-auto mb-8">
+                    <span className="text-dark-500 text-xs block uppercase tracking-wider mb-1">
+                      {isNepali ? 'विचार आइडी' : 'Idea ID'}
+                    </span>
+                    <strong className="text-primary-400 font-display text-lg tracking-widest block">
+                      {successSerialId}
+                    </strong>
                   </div>
-                  <button onClick={() => setSubmitted(false)} className="btn-primary text-sm uppercase tracking-widest">
-                    <Sparkles size={14} />
+
+                  <button
+                    onClick={() => setSubmitted(false)}
+                    className="btn-primary text-xs uppercase tracking-widest px-6 py-3 font-bold shadow-red-glow min-h-[44px]"
+                  >
+                    <Sparkles size={13} />
                     <span className={isNepali ? 'font-nepali' : ''}>
-                      {isNepali ? 'अर्को विचार पेश गर्नुहोस्' : 'Submit Another Idea'}
+                      {isNepali ? 'अर्को विचार पेश गर्नुहोस्' : 'Submit Another'}
                     </span>
                   </button>
                 </motion.div>
@@ -418,34 +490,56 @@ export default function YouthIdeasPage({ params: { locale } }) {
                         />
                         {errors.name && (
                           <p className={`text-red-500 text-xs mt-1 ${isNepali ? 'font-nepali' : ''}`}>
-                            {isNepali ? 'नाम अनिवार्य छ' : 'Required'}
+                            {isNepali ? 'नाम अनिवार्य छ' : 'Name is required'}
                           </p>
                         )}
                       </div>
                       <div>
                         <label className={`block text-xs font-bold uppercase tracking-widest text-dark-300 mb-2 ${isNepali ? 'font-nepali' : ''}`}>
-                          {isNepali ? 'ठाउँ' : 'Location'}
+                          {isNepali ? 'ठाउँ' : 'Location'} *
                         </label>
                         <input
-                          {...register('location')}
-                          className={`w-full bg-dark-900 border border-primary-900/40 rounded-sm px-4 py-3 text-white text-sm focus:outline-none focus:border-primary-600 transition-colors placeholder:text-dark-600 ${isNepali ? 'font-nepali' : ''}`}
+                          {...register('location', { required: true })}
+                          className={`w-full bg-dark-900 border rounded-sm px-4 py-3 text-white text-sm focus:outline-none focus:border-primary-600 transition-colors placeholder:text-dark-600
+                            ${errors.location ? 'border-red-700' : 'border-primary-900/40'} ${isNepali ? 'font-nepali' : ''}`}
                           placeholder={isNepali ? 'गाउँ/वडा' : 'Village/Ward'}
                         />
+                        {errors.location && (
+                          <p className={`text-red-500 text-xs mt-1 ${isNepali ? 'font-nepali' : ''}`}>
+                            {isNepali ? 'ठाउँ अनिवार्य छ' : 'Location is required'}
+                          </p>
+                        )}
                       </div>
                     </div>
 
-                    {/* Phone optional */}
+                    {/* Phone required with validation */}
                     <div>
-                      <label className="block text-xs font-bold uppercase tracking-widest text-dark-300 mb-2">
-                        {isNepali ? 'फोन नम्बर' : 'Phone'}{' '}
-                        <span className="text-dark-600 normal-case tracking-normal font-normal">(optional)</span>
+                      <label className={`block text-xs font-bold uppercase tracking-widest text-dark-300 mb-2 ${isNepali ? 'font-nepali' : ''}`}>
+                        {isNepali ? 'फोन नम्बर' : 'Contact Number'} *
                       </label>
                       <input
-                        {...register('phone', { pattern: /^[0-9+\-\s]{7,15}$/ })}
+                        {...register('phone', {
+                          required: true,
+                          validate: (value) => {
+                            if (!value) return false;
+                            if (!/^[0-9+\-\s]{7,15}$/.test(value.trim())) return false;
+                            const cleaned = value.replace(/[^0-9]/g, '');
+                            if (/^(.)\1+$/.test(cleaned) || cleaned.length < 7 || cleaned === '1234567890') return false;
+                            return true;
+                          }
+                        })}
                         type="tel"
-                        className="w-full bg-dark-900 border border-primary-900/40 rounded-sm px-4 py-3 text-white text-sm focus:outline-none focus:border-primary-600 transition-colors placeholder:text-dark-600"
+                        className={`w-full bg-dark-900 border rounded-sm px-4 py-3 text-white text-sm focus:outline-none focus:border-primary-600 transition-colors placeholder:text-dark-600
+                          ${errors.phone ? 'border-red-700' : 'border-primary-900/40'} ${isNepali ? 'font-nepali' : ''}`}
                         placeholder="+977 98XXXXXXXX"
                       />
+                      {errors.phone && (
+                        <p className={`text-red-500 text-xs mt-1 ${isNepali ? 'font-nepali' : ''}`}>
+                          {errors.phone.type === 'required'
+                            ? (isNepali ? 'फोन नम्बर अनिवार्य छ' : 'Contact number is required')
+                            : (isNepali ? 'कृपया मान्य फोन नम्बर प्रविष्ट गर्नुहोस्' : 'Please enter a valid phone number')}
+                        </p>
+                      )}
                     </div>
 
                     {error && (

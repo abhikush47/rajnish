@@ -85,11 +85,12 @@ async function readJsonDb() {
     if (!parsed.volunteers) parsed.volunteers = [];
     if (!parsed.feedback) parsed.feedback = [];
     if (!parsed.social_videos) parsed.social_videos = [];
+    if (!parsed.youth_ideas) parsed.youth_ideas = [];
     
     return parsed;
   } catch (error) {
     console.error('Error reading JSON DB:', error);
-    return { connect_requests: [], volunteers: [], feedback: [], social_videos: [] };
+    return { connect_requests: [], volunteers: [], feedback: [], social_videos: [], youth_ideas: [] };
   }
 }
 
@@ -178,6 +179,25 @@ export async function initDb() {
       );
     `);
 
+    // Create youth_ideas table
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS youth_ideas (
+        id TEXT PRIMARY KEY,
+        name TEXT NOT NULL,
+        location TEXT NOT NULL,
+        ward TEXT NOT NULL,
+        contact_number TEXT NOT NULL,
+        email TEXT,
+        category TEXT NOT NULL,
+        idea TEXT NOT NULL,
+        language TEXT NOT NULL,
+        status TEXT NOT NULL DEFAULT 'pending',
+        admin_note TEXT,
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+
     // Migrations to add missing fields in existing tables
     await client.query(`
       ALTER TABLE social_videos ADD COLUMN IF NOT EXISTS cover_source TEXT DEFAULT 'auto';
@@ -232,6 +252,15 @@ export async function initDb() {
                 `INSERT INTO social_videos (id, title_en, description_en, title_ne, description_ne, video_url, platform, cover_image_url, cover_source, thumbnail_status, status, created_at, updated_at) 
                  VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13) ON CONFLICT (id) DO NOTHING;`,
                 [sv.id, sv.title_en, sv.description_en, sv.title_ne, sv.description_ne, sv.video_url, sv.platform, sv.cover_image_url, sv.cover_source || 'auto', sv.thumbnailStatus || sv.thumbnail_status || 'none', sv.status, sv.createdAt || new Date(), sv.updatedAt || new Date()]
+              );
+            }
+          }
+          if (db.youth_ideas) {
+            for (const yi of db.youth_ideas) {
+              await client.query(
+                `INSERT INTO youth_ideas (id, name, location, ward, contact_number, email, category, idea, language, status, admin_note, created_at, updated_at) 
+                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13) ON CONFLICT (id) DO NOTHING;`,
+                [yi.id, yi.name, yi.location, yi.ward, yi.contact_number || yi.phone || '', yi.email || '', yi.category, yi.idea, yi.language || yi.locale || 'en', yi.status || 'pending', yi.admin_note || '', yi.createdAt || new Date(), yi.updatedAt || new Date()]
               );
             }
           }
@@ -700,6 +729,8 @@ export async function deleteRecord(type, id) {
       tableName = 'feedback';
     } else if (type === 'social_video') {
       tableName = 'social_videos';
+    } else if (type === 'youth_idea') {
+      tableName = 'youth_ideas';
     } else {
       throw new Error('Invalid collection type for deletion');
     }
@@ -718,6 +749,8 @@ export async function deleteRecord(type, id) {
       collectionName = 'feedback';
     } else if (type === 'social_video') {
       collectionName = 'social_videos';
+    } else if (type === 'youth_idea') {
+      collectionName = 'youth_ideas';
     } else {
       throw new Error('Invalid collection type for deletion');
     }
@@ -729,5 +762,149 @@ export async function deleteRecord(type, id) {
       return true;
     }
     throw new Error('Record not found');
+  }
+}
+
+// --- Youth Ideas CRUD operations ---
+
+export async function getYouthIdeas() {
+  if (usePostgres) {
+    await initDb();
+    const res = await pool.query('SELECT * FROM youth_ideas ORDER BY created_at DESC;');
+    return res.rows.map(row => ({
+      id: row.id,
+      name: row.name,
+      location: row.location,
+      ward: row.ward,
+      contact_number: row.contact_number,
+      email: row.email || '',
+      category: row.category,
+      idea: row.idea,
+      language: row.language,
+      status: row.status,
+      admin_note: row.admin_note || '',
+      createdAt: row.created_at,
+      updatedAt: row.updated_at
+    }));
+  } else {
+    const db = await readJsonDb();
+    return db.youth_ideas || [];
+  }
+}
+
+export async function addYouthIdea(entry) {
+  if (usePostgres) {
+    await initDb();
+    const id = `yi_${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    const status = 'pending';
+    const query = `
+      INSERT INTO youth_ideas (id, name, location, ward, contact_number, email, category, idea, language, status, admin_note)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+      RETURNING *;
+    `;
+    const res = await pool.query(query, [
+      id,
+      entry.name,
+      entry.location,
+      entry.ward,
+      entry.contact_number,
+      entry.email || '',
+      entry.category,
+      entry.idea,
+      entry.language || 'en',
+      status,
+      ''
+    ]);
+    const row = res.rows[0];
+    return {
+      id: row.id,
+      name: row.name,
+      location: row.location,
+      ward: row.ward,
+      contact_number: row.contact_number,
+      email: row.email || '',
+      category: row.category,
+      idea: row.idea,
+      language: row.language,
+      status: row.status,
+      admin_note: row.admin_note || '',
+      createdAt: row.created_at,
+      updatedAt: row.updated_at
+    };
+  } else {
+    const db = await readJsonDb();
+    const newEntry = {
+      id: `yi_${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      status: 'pending',
+      admin_note: '',
+      ...entry
+    };
+    db.youth_ideas.push(newEntry);
+    await writeJsonDb(db);
+    return newEntry;
+  }
+}
+
+export async function updateYouthIdea(id, fields) {
+  if (usePostgres) {
+    await initDb();
+    const setClause = [];
+    const values = [id];
+    let placeholderIndex = 2;
+
+    if (fields.status !== undefined) {
+      setClause.push(`status = $${placeholderIndex++}`);
+      values.push(fields.status);
+    }
+    if (fields.admin_note !== undefined) {
+      setClause.push(`admin_note = $${placeholderIndex++}`);
+      values.push(fields.admin_note);
+    }
+
+    if (setClause.length === 0) {
+      throw new Error('No fields provided to update');
+    }
+
+    const query = `
+      UPDATE youth_ideas
+      SET ${setClause.join(', ')}, updated_at = CURRENT_TIMESTAMP
+      WHERE id = $1
+      RETURNING *;
+    `;
+    const res = await pool.query(query, values);
+    if (res.rows.length > 0) {
+      const row = res.rows[0];
+      return {
+        id: row.id,
+        name: row.name,
+        location: row.location,
+        ward: row.ward,
+        contact_number: row.contact_number,
+        email: row.email || '',
+        category: row.category,
+        idea: row.idea,
+        language: row.language,
+        status: row.status,
+        admin_note: row.admin_note || '',
+        createdAt: row.created_at,
+        updatedAt: row.updated_at
+      };
+    }
+    throw new Error('Youth idea not found');
+  } else {
+    const db = await readJsonDb();
+    const index = db.youth_ideas.findIndex(item => item.id === id);
+    if (index !== -1) {
+      db.youth_ideas[index] = {
+        ...db.youth_ideas[index],
+        ...fields,
+        updatedAt: new Date().toISOString()
+      };
+      await writeJsonDb(db);
+      return db.youth_ideas[index];
+    }
+    throw new Error('Youth idea not found');
   }
 }

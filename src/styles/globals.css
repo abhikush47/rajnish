@@ -167,3 +167,183 @@ body {
   transform: translateY(0);
   transition: all 0.4s ease-out;
 }
+
+/* Mobile Homepage Alignment & Spacing fixes */
+@media (max-width: 639px) {
+  .mobile-container {
+    width: 100% !important;
+    max-width: 430px !important;
+    margin-inline: auto !important;
+    padding-inline: 24px !important;
+    box-sizing: border-box !important;
+  }
+  
+  @media (max-width: 380px) {
+    .mobile-container {
+      padding-inline: 18px !important;
+    }
+  }
+
+  .header-inner {
+    width: 100% !important;
+    max-width: 430px !important;
+    margin-inline: auto !important;
+    padding-inline: 24px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    box-sizing: border-box !important;
+  }
+
+  @media (max-width: 380px) {
+    .header-inner {
+      padding-inline: 18px !important;
+    }
+  }
+
+  .logo-responsive {
+    max-width: 220px !important;
+    width: auto !important;
+  }
+
+  @media (max-width: 380px) {
+    .logo-responsive {
+      max-width: 190px !important;
+    }
+  }
+
+  .mobile-menu-button {
+    width: 56px !important;
+    height: 56px !important;
+    flex: 0 0 56px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    box-sizing: border-box !important;
+    border: 1px solid rgba(200, 13, 13, 0.6) !important;
+    border-radius: 4px !important;
+    padding: 0 !important;
+  }
+
+  .hero-content {
+    width: 100% !important;
+    max-width: 430px !important;
+    margin-inline: auto !important;
+    padding-inline: 24px !important;
+    box-sizing: border-box !important;
+  }
+
+  @media (max-width: 380px) {
+    .hero-content {
+      padding-inline: 18px !important;
+    }
+  }
+
+  .location-badge {
+    width: 100% !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+    margin-inline: auto !important;
+    text-align: center !important;
+  }
+
+  .candidate-badge {
+    width: 100% !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+    margin-inline: auto !important;
+    text-align: center !important;
+  }
+
+  .hero-name {
+    text-align: center !important;
+    margin-inline: auto !important;
+  }
+
+  .hero-name-primary {
+    font-size: clamp(3.4rem, 15vw, 5.5rem) !important;
+    line-height: 0.9 !important;
+  }
+
+  .hero-name-secondary {
+    font-size: clamp(2.8rem, 12vw, 4.8rem) !important;
+    line-height: 0.95 !important;
+  }
+
+  .hero-tagline {
+    max-width: 360px !important;
+    margin-inline: auto !important;
+    text-align: center !important;
+  }
+
+  .hero-description {
+    width: 100% !important;
+    max-width: 360px !important;
+    margin-inline: auto !important;
+    text-align: center !important;
+    line-height: 1.6 !important;
+  }
+
+  .hero-actions {
+    width: 100% !important;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 16px !important;
+    margin-inline: auto !important;
+    box-sizing: border-box !important;
+  }
+
+  .hero-actions > a,
+  .hero-actions > button,
+  .hero-actions > div {
+    width: 100% !important;
+    min-height: 64px !important;
+    box-sizing: border-box !important;
+  }
+
+  .cta-button {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 12px !important;
+    width: 100% !important;
+    height: 100% !important;
+  }
+
+  .stats-section {
+    width: 100% !important;
+    max-width: 430px !important;
+    margin-inline: auto !important;
+    padding-inline: 24px !important;
+    box-sizing: border-box !important;
+  }
+
+  @media (max-width: 380px) {
+    .stats-section {
+      padding-inline: 18px !important;
+    }
+  }
+
+  .stats-grid {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    width: 100% !important;
+    gap: 1px !important;
+  }
+
+  .stat-number {
+    font-size: clamp(2rem, 9vw, 4rem) !important;
+  }
+
+  .stat-label {
+    font-size: clamp(0.85rem, 3.5vw, 1.1rem) !important;
+  }
+
+  /* Prevent decorative backgrounds overflow */
+  .decorative-element {
+    pointer-events: none !important;
+    max-width: 100vw !important;
+    overflow: hidden !important;
+  }
+}
