@@ -17,6 +17,7 @@ export async function GET(req) {
       location: yi.location,
       ward: yi.ward,
       status: yi.status,
+      progressPercent: yi.progressPercent || 0,
       createdAt: yi.createdAt
     }));
 
@@ -40,7 +41,7 @@ export async function POST(req) {
       return NextResponse.json({ success: false, error: 'Location is required' }, { status: 400 });
     }
     if (!idea || idea.trim().length < 20 || idea.trim().length > 500) {
-      return NextResponse.json({ success: false, error: 'Please describe your idea in at least 20 characters (maximum 500 characters).' }, { status: 400 });
+      return NextResponse.json({ success: false, error: 'Idea must contain between 20 and 500 characters.' }, { status: 400 });
     }
     if (!category) {
       return NextResponse.json({ success: false, error: 'Category is required' }, { status: 400 });

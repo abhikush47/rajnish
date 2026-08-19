@@ -66,6 +66,10 @@ export default function AdminPage({ params: { locale } }) {
   const [updatingYouthIdea, setUpdatingYouthIdea] = useState(false);
   const [tempStatus, setTempStatus] = useState('');
   const [tempAdminNote, setTempAdminNote] = useState('');
+  const [tempProgressPercent, setTempProgressPercent] = useState(0);
+  const [tempTimelineMessage, setTempTimelineMessage] = useState('');
+  const [adminTimelineUpdates, setAdminTimelineUpdates] = useState([]);
+  const [adminTimelineLoading, setAdminTimelineLoading] = useState(false);
   const [youthIdeasSearch, setYouthIdeasSearch] = useState('');
   const [youthIdeasStatusFilter, setYouthIdeasStatusFilter] = useState('all');
   const [youthIdeasCategoryFilter, setYouthIdeasCategoryFilter] = useState('all');
@@ -102,6 +106,33 @@ export default function AdminPage({ params: { locale } }) {
     }
     return () => { document.body.style.overflow = ''; };
   }, [isAdminMenuOpen]);
+
+  // Load timeline updates for selected Youth Idea in Admin Panel
+  useEffect(() => {
+    if (!selectedYouthIdea) {
+      setAdminTimelineUpdates([]);
+      return;
+    }
+    
+    const fetchTimeline = async () => {
+      setAdminTimelineLoading(true);
+      try {
+        const res = await fetch(`/api/youth-ideas/${selectedYouthIdea.id}/progress`);
+        if (res.ok) {
+          const result = await res.json();
+          if (result.success && result.data) {
+            setAdminTimelineUpdates(result.data);
+          }
+        }
+      } catch (err) {
+        console.warn('Failed to load admin timeline updates:', err);
+      } finally {
+        setAdminTimelineLoading(false);
+      }
+    };
+
+    fetchTimeline();
+  }, [selectedYouthIdea]);
 
   // Authenticate user changes
   useEffect(() => {
@@ -262,8 +293,8 @@ export default function AdminPage({ params: { locale } }) {
     }
   };
 
-  // Update Youth Idea details status & admin_note
-  const handleSaveYouthIdeaUpdate = async (id, status, admin_note) => {
+  // Update Youth Idea details status, progress percent, message timeline log & admin_note
+  const handleSaveYouthIdeaUpdate = async (id, status, progressPercent, message, admin_note) => {
     if (!token) return;
     setUpdatingYouthIdea(true);
     try {
@@ -273,7 +304,7 @@ export default function AdminPage({ params: { locale } }) {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
-        body: JSON.stringify({ status, admin_note })
+        body: JSON.stringify({ status, progressPercent, message, admin_note })
       });
 
       if (res.ok) {
@@ -1749,6 +1780,8 @@ export default function AdminPage({ params: { locale } }) {
                                       setSelectedYouthIdea(row);
                                       setTempStatus(row.status || 'pending');
                                       setTempAdminNote(row.admin_note || '');
+                                      setTempProgressPercent(row.progressPercent || 0);
+                                      setTempTimelineMessage('');
                                     }}
                                     className="p-2 border border-primary-900/50 hover:bg-primary-900/20 text-primary-400 rounded-sm transition-all flex items-center justify-center min-w-[36px] min-h-[36px]"
                                     title={isNepali ? 'विवरण हेर्नुहोस्' : 'View Details'}
@@ -1820,6 +1853,8 @@ export default function AdminPage({ params: { locale } }) {
                                 setSelectedYouthIdea(row);
                                 setTempStatus(row.status || 'pending');
                                 setTempAdminNote(row.admin_note || '');
+                                setTempProgressPercent(row.progressPercent || 0);
+                                setTempTimelineMessage('');
                               }}
                               className="px-4 py-2 border border-primary-900/50 hover:bg-primary-900/20 text-primary-400 rounded-sm text-[10px] font-bold uppercase tracking-widest flex items-center gap-1 min-h-[44px]"
                             >
@@ -2206,9 +2241,61 @@ export default function AdminPage({ params: { locale } }) {
                   <option value="pending">{isNepali ? 'विचाराधीन (Pending)' : 'Pending'}</option>
                   <option value="under_review">{isNepali ? 'समीक्षाधीन (Under Review)' : 'Under Review'}</option>
                   <option value="approved">{isNepali ? 'स्वीकृत (Approved)' : 'Approved'}</option>
+                  <option value="in_progress">{isNepali ? 'प्रगतिमा (In Progress)' : 'In Progress'}</option>
                   <option value="implemented">{isNepali ? 'कार्यान्वित (Implemented)' : 'Implemented'}</option>
                   <option value="rejected">{isNepali ? 'अस्वीकृत (Rejected)' : 'Rejected'}</option>
                 </select>
+              </div>
+
+              {/* Implementation Progress Percent */}
+              <div className="space-y-1.5">
+                <label className="text-dark-400 text-xs font-semibold uppercase tracking-wider block">
+                  {isNepali ? 'कार्यान्वयन प्रगति (%)' : 'Implementation Progress (%)'}
+                </label>
+                <div className="flex items-center gap-3">
+                  <input
+                    type="number"
+                    min={0}
+                    max={100}
+                    value={tempProgressPercent}
+                    onChange={(e) => setTempProgressPercent(Math.min(100, Math.max(0, parseInt(e.target.value) || 0)))}
+                    className="w-24 bg-dark-950 border border-primary-950 focus:border-primary-600 focus:outline-none rounded-sm px-3 py-2.5 text-white text-sm font-mono"
+                  />
+                  <div className="flex-1 bg-dark-950 border border-primary-950 h-3 rounded-full overflow-hidden">
+                    <div
+                      className="bg-primary-600 h-full rounded-full transition-all duration-300"
+                      style={{ width: `${tempProgressPercent}%` }}
+                    />
+                  </div>
+                  <span className="text-primary-400 font-mono text-xs font-bold">{tempProgressPercent}%</span>
+                </div>
+                <div className="flex flex-wrap gap-1.5 pt-1">
+                  {[0, 10, 25, 50, 75, 90, 100].map(pct => (
+                    <button
+                      key={pct}
+                      type="button"
+                      onClick={() => setTempProgressPercent(pct)}
+                      className={`px-2 py-0.5 rounded-sm text-[10px] font-bold border transition-all ${tempProgressPercent === pct ? 'border-primary-600 bg-primary-900/30 text-primary-300' : 'border-primary-900/40 text-dark-500 hover:border-primary-700 hover:text-dark-300'}`}
+                    >
+                      {pct}%
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Progress Update Message (appended to timeline) */}
+              <div className="space-y-1.5">
+                <label className="text-dark-400 text-xs font-semibold uppercase tracking-wider block">
+                  {isNepali ? 'प्रगति अपडेट सन्देश' : 'Progress Update Message'}
+                  <span className="text-dark-600 font-normal ml-1 normal-case">({isNepali ? 'सार्वजनिक टाइमलाइनमा देखिनेछ' : 'will appear on public timeline'})</span>
+                </label>
+                <textarea
+                  rows={2}
+                  value={tempTimelineMessage}
+                  onChange={(e) => setTempTimelineMessage(e.target.value)}
+                  placeholder={isNepali ? 'प्रगति सन्देश लेख्नुहोस्...' : 'e.g. "Road construction has started in Ward 5..."'}
+                  className="w-full bg-dark-950 border border-primary-950 focus:border-primary-600 focus:outline-none rounded-sm px-4 py-2.5 text-white text-sm resize-none"
+                />
               </div>
 
               {/* Admin note textarea */}
@@ -2217,13 +2304,52 @@ export default function AdminPage({ params: { locale } }) {
                   {isNepali ? 'आन्तरिक नोट (प्रशासकीय मात्र)' : 'Internal Admin Note (Private)'}
                 </label>
                 <textarea
-                  rows={3}
+                  rows={2}
                   value={tempAdminNote}
                   onChange={(e) => setTempAdminNote(e.target.value)}
-                  placeholder={isNepali ? 'यहाँ टिप्पणीहरू लेख्नुहोस्...' : 'Add admin observations, updates or notes here...'}
+                  placeholder={isNepali ? 'यहाँ टिप्पणीहरू लेख्नुहोस्...' : 'Private admin observations...'}
                   className="w-full bg-dark-950 border border-primary-950 focus:border-primary-600 focus:outline-none rounded-sm px-4 py-2.5 text-white text-sm resize-none"
                 />
               </div>
+
+              {/* Progress timeline history */}
+              {(adminTimelineUpdates.length > 0 || adminTimelineLoading) && (
+                <div className="space-y-2 pt-2 border-t border-primary-900/10">
+                  <label className="text-dark-400 text-xs font-semibold uppercase tracking-wider block">
+                    {isNepali ? 'प्रगति इतिहास' : 'Progress History'}
+                  </label>
+                  {adminTimelineLoading ? (
+                    <div className="flex items-center gap-1.5 text-dark-500 text-xs py-2">
+                      <RefreshCw size={11} className="animate-spin" />
+                      <span>{isNepali ? 'लोड हुँदैछ...' : 'Loading...'}</span>
+                    </div>
+                  ) : (
+                    <div className="relative pl-5 border-l border-primary-900/20 space-y-3 py-1 ml-1 max-h-36 overflow-y-auto">
+                      {adminTimelineUpdates.map((item, idx) => {
+                        const isLast = idx === adminTimelineUpdates.length - 1;
+                        return (
+                          <div key={item.id} className="relative">
+                            <span className={`absolute -left-[22px] top-1 w-3 h-3 rounded-full border ${isLast ? 'bg-primary-600 border-primary-400' : 'bg-dark-800 border-primary-900/50'}`} />
+                            <div className="space-y-0.5">
+                              <div className="flex justify-between gap-2 text-[10px]">
+                                <span className={`font-bold uppercase tracking-wider ${isLast ? 'text-primary-400' : 'text-white'}`}>
+                                  {item.status} {item.progressPercent > 0 ? `— ${item.progressPercent}%` : ''}
+                                </span>
+                                <span className="text-dark-600 font-mono flex-shrink-0">
+                                  {new Date(item.createdAt).toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' })}
+                                </span>
+                              </div>
+                              {item.message && (
+                                <p className="text-dark-500 text-[10px] leading-relaxed">{item.message}</p>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              )}
 
               {/* Save / Actions Buttons */}
               <div className="flex justify-end gap-3 border-t border-primary-950/40 pt-4 mt-6">
@@ -2237,7 +2363,7 @@ export default function AdminPage({ params: { locale } }) {
                 <button
                   type="button"
                   disabled={updatingYouthIdea}
-                  onClick={() => handleSaveYouthIdeaUpdate(selectedYouthIdea.id, tempStatus, tempAdminNote)}
+                  onClick={() => handleSaveYouthIdeaUpdate(selectedYouthIdea.id, tempStatus, tempProgressPercent, tempTimelineMessage, tempAdminNote)}
                   className="btn-primary flex items-center gap-1.5 px-5 py-2.5 text-xs uppercase tracking-widest shadow-red-glow font-bold"
                 >
                   {updatingYouthIdea ? <RefreshCw size={12} className="animate-spin" /> : null}

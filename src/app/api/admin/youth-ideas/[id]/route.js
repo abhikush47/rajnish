@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { verifyAdminToken } from '@/lib/admin-auth';
-import { getYouthIdeas, updateYouthIdea, deleteRecord } from '@/lib/db';
+import { getYouthIdeas, updateYouthIdea, deleteRecord, addYouthIdeaProgressUpdate } from '@/lib/db';
 
 export async function GET(req, { params }) {
   try {
@@ -35,10 +35,13 @@ export async function PATCH(req, { params }) {
 
     const { id } = params;
     const body = await req.json().catch(() => ({}));
-    const { status, admin_note } = body;
+    const { status, progress_percent, progressPercent, message, admin_note } = body;
+
+    const finalProgressPercent = progressPercent !== undefined ? progressPercent : progress_percent;
 
     const fieldsToUpdate = {};
     if (status !== undefined) fieldsToUpdate.status = status;
+    if (finalProgressPercent !== undefined) fieldsToUpdate.progressPercent = finalProgressPercent;
     if (admin_note !== undefined) fieldsToUpdate.admin_note = admin_note;
 
     if (Object.keys(fieldsToUpdate).length === 0) {
@@ -46,6 +49,22 @@ export async function PATCH(req, { params }) {
     }
 
     const updatedIdea = await updateYouthIdea(id, fieldsToUpdate);
+
+    // Create a progress timeline update log if status, progress, or message is updated
+    if (status !== undefined || finalProgressPercent !== undefined || (message && message.trim())) {
+      const displayStatus = status || updatedIdea.status;
+      const displayProgress = finalProgressPercent !== undefined ? finalProgressPercent : (updatedIdea.progressPercent || 0);
+      const displayMessage = (message && message.trim()) ? message.trim() : `Process status updated to ${displayStatus}.`;
+
+      await addYouthIdeaProgressUpdate({
+        youthIdeaId: id,
+        status: displayStatus,
+        progressPercent: displayProgress,
+        message: displayMessage,
+        createdBy: 'admin'
+      });
+    }
+
     return NextResponse.json({ success: true, data: updatedIdea });
   } catch (error) {
     console.error('Error updating youth idea status/note:', error);

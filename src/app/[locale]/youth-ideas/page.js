@@ -7,7 +7,7 @@ import { useForm } from 'react-hook-form';
 import {
   Lightbulb, Send, CheckCircle2, Loader2,
   AlertCircle, Sparkles, Clock, BadgeCheck,
-  Rocket, Eye, RefreshCw,
+  Rocket, Eye, RefreshCw, X
 } from 'lucide-react';
 
 // ─── Category definitions ────────────────────────────────────────────────────
@@ -35,6 +35,25 @@ const categories = {
     { id: 'other',       label: 'अन्य',               emoji: '💡' },
   ],
 };
+
+// ─── Idea Validation Function ────────────────────────────────────────────────
+function validateIdea(value, isNepali = false) {
+  const length = value.trim().length;
+
+  if (length < 20) {
+    return isNepali
+      ? "कृपया आफ्नो विचार कम्तिमा २० अक्षरमा वर्णन गर्नुहोस्।"
+      : "Please describe your idea in at least 20 characters.";
+  }
+
+  if (length > 500) {
+    return isNepali
+      ? "तपाईंको विचार ५०० अक्षरभन्दा बढी हुन सक्दैन।"
+      : "Your idea cannot exceed 500 characters.";
+  }
+
+  return null;
+}
 
 // ─── Status badge config ──────────────────────────────────────────────────────
 const STATUS_CONFIG = {
@@ -208,8 +227,24 @@ export default function YouthIdeasPage({ params: { locale } }) {
     implemented: 3
   });
 
+  // Track progress modal states & touched validation
+  const [trackedIdea, setTrackedIdea] = useState(null);
+  const [trackedTimeline, setTrackedTimeline] = useState([]);
+  const [timelineLoading, setTimelineLoading] = useState(false);
+  const [ideaTouched, setIdeaTouched] = useState(false);
+
   const { register, handleSubmit, formState: { errors }, reset, watch } = useForm();
   const ideaText = watch('idea', '');
+  const trimmedLength = ideaText.trim().length;
+
+  const ideaRegister = register('idea', {
+    required: isNepali ? 'विचार अनिवार्य छ' : 'Idea is required',
+    validate: (value) => {
+      const err = validateIdea(value || '', isNepali);
+      return err ? err : true;
+    }
+  });
+
   const cats = isNepali ? categories.ne : categories.en;
 
   // ── Load recent ideas ──
@@ -265,6 +300,36 @@ export default function YouthIdeasPage({ params: { locale } }) {
     return () => clearInterval(interval);
   }, [loadIdeas, fetchStats]);
 
+  // ── Poll timeline updates every 30s while tracking modal is open ──
+  useEffect(() => {
+    if (!trackedIdea) {
+      setTrackedTimeline([]);
+      return;
+    }
+    
+    const fetchTimeline = async () => {
+      setTimelineLoading(true);
+      try {
+        const res = await fetch(`/api/youth-ideas/${trackedIdea.id}/progress`);
+        if (res.ok) {
+          const result = await res.json();
+          if (result.success && result.data) {
+            setTrackedTimeline(result.data);
+          }
+        }
+      } catch (err) {
+        console.warn('Failed to fetch progress updates:', err);
+      } finally {
+        setTimelineLoading(false);
+      }
+    };
+
+    fetchTimeline(); // initial fetch
+
+    const interval = setInterval(fetchTimeline, 30000);
+    return () => clearInterval(interval);
+  }, [trackedIdea]);
+
   // ── Submit handler ──
   const onSubmit = async (data) => {
     if (loading) return;
@@ -293,6 +358,7 @@ export default function YouthIdeasPage({ params: { locale } }) {
         setSubmitted(true);
         reset();
         setSelectedCategory('');
+        setIdeaTouched(false);
         loadIdeas();
         fetchStats();
       } else {
@@ -454,24 +520,60 @@ export default function YouthIdeasPage({ params: { locale } }) {
                         {t('idea')} *
                       </label>
                       <textarea
-                        {...register('idea', { required: true, minLength: 20, maxLength: 500 })}
+                        {...ideaRegister}
+                        maxLength={500}
+                        onChange={(e) => {
+                          setIdeaTouched(true);
+                          ideaRegister.onChange(e);
+                        }}
+                        onBlur={(e) => {
+                          setIdeaTouched(true);
+                          ideaRegister.onBlur(e);
+                        }}
                         rows={5}
                         className={`w-full bg-dark-900 border rounded-sm px-4 py-3 text-white text-sm focus:outline-none focus:border-primary-600 transition-colors placeholder:text-dark-600 resize-none
-                          ${errors.idea ? 'border-red-700' : 'border-primary-900/40'} ${isNepali ? 'font-nepali' : ''}`}
+                          ${(ideaTouched && trimmedLength > 0 && trimmedLength < 20) || (errors.idea && trimmedLength === 0) ? 'border-red-700' : 'border-primary-900/40'} ${isNepali ? 'font-nepali' : ''}`}
                         placeholder={isNepali
                           ? 'तपाईंको विचार विस्तारमा लेख्नुहोस्... (कम्तिमा २० अक्षर)'
                           : 'Describe your idea in detail... (minimum 20 characters)'}
                       />
-                      <div className="flex justify-between mt-1">
-                        {errors.idea
-                          ? <p className={`text-red-500 text-xs ${isNepali ? 'font-nepali' : ''}`}>
-                              {errors.idea.type === 'minLength'
-                                ? (isNepali ? 'कम्तिमा २० अक्षर' : 'Min 20 characters')
-                                : (isNepali ? 'विचार अनिवार्य छ' : 'Required')}
-                            </p>
-                          : <span />}
-                        <span className={`text-xs ${ideaText.length > 450 ? 'text-yellow-500' : 'text-dark-600'}`}>
-                          {ideaText.length}/500
+                      <div className="flex justify-between items-start mt-2">
+                        <div>
+                          {ideaTouched ? (
+                            <>
+                              {trimmedLength === 0 && errors.idea && (
+                                <p className={`text-red-500 text-xs ${isNepali ? 'font-nepali' : ''}`}>
+                                  {errors.idea.message}
+                                </p>
+                              )}
+                              {trimmedLength > 0 && trimmedLength < 20 && (
+                                <p className="text-red-500 text-xs flex items-center gap-1 font-semibold">
+                                  <span>⚠</span>
+                                  <span>{isNepali ? 'कृपया आफ्नो विचार कम्तिमा २० अक्षरमा वर्णन गर्नुहोस्।' : 'Please describe your idea in at least 20 characters.'}</span>
+                                </p>
+                              )}
+                              {trimmedLength >= 20 && trimmedLength <= 500 && (
+                                <p className="text-green-500 text-xs flex items-center gap-1 font-semibold">
+                                  <span>✓</span>
+                                  <span>{isNepali ? 'विचार ठीक देखिन्छ' : 'Idea looks good'}</span>
+                                </p>
+                              )}
+                            </>
+                          ) : (
+                            errors.idea && (
+                              <p className={`text-red-500 text-xs ${isNepali ? 'font-nepali' : ''}`}>
+                                {errors.idea.message}
+                              </p>
+                            )
+                          )}
+                        </div>
+                        <span className={`text-xs font-mono font-bold ${
+                          trimmedLength === 0 ? 'text-dark-600' :
+                          (trimmedLength < 20 || (trimmedLength >= 480 && trimmedLength < 500)) ? 'text-yellow-500 animate-pulse' :
+                          trimmedLength >= 500 ? 'text-red-500 font-black' :
+                          'text-green-500'
+                        }`}>
+                          {trimmedLength}/500
                         </span>
                       </div>
                     </div>
@@ -672,9 +774,45 @@ export default function YouthIdeasPage({ params: { locale } }) {
                             <span className="text-dark-700">·</span>
                             <span className="text-xs text-dark-700">{timeAgo(idea.createdAt)}</span>
                           </div>
-                          {/* Status badge */}
-                          <div className="mt-2">
-                            <StatusBadge status={idea.status || 'pending'} isNepali={isNepali} />
+                          {/* Status and Progress percent bar */}
+                          <div className="mt-3.5 space-y-2">
+                            <div className="flex items-center justify-between text-[10px] font-bold">
+                              <span className={`px-2 py-0.5 rounded-sm uppercase tracking-wider ${
+                                idea.status === 'implemented' ? 'bg-green-950/40 text-green-400 border border-green-800/40' :
+                                idea.status === 'approved' ? 'bg-primary-950/40 text-primary-400 border border-primary-800/40' :
+                                idea.status === 'under_review' ? 'bg-yellow-950/40 text-yellow-400 border border-yellow-800/40' :
+                                idea.status === 'rejected' ? 'bg-red-950/40 text-red-400 border border-red-800/40' :
+                                'bg-dark-950 text-dark-400 border border-dark-800'
+                              }`}>
+                                {idea.status === 'pending' ? (isNepali ? 'विचाराधीन' : 'PENDING') :
+                                 idea.status === 'under_review' ? (isNepali ? 'समीक्षाधीन' : 'UNDER REVIEW') :
+                                 idea.status === 'approved' ? (isNepali ? 'स्वीकृत' : 'APPROVED') :
+                                 idea.status === 'implemented' ? (isNepali ? 'कार्यान्वित' : 'IMPLEMENTED') :
+                                 idea.status === 'rejected' ? (isNepali ? 'अस्वीकृत' : 'REJECTED') :
+                                 (idea.status || 'PENDING').toUpperCase()}
+                              </span>
+                              <span className="text-primary-400 font-mono">
+                                {idea.progressPercent || 0}% {isNepali ? 'सम्पन्न' : 'COMPLETE'}
+                              </span>
+                            </div>
+
+                            {/* Progress bar container */}
+                            <div className="w-full bg-dark-900 border border-primary-950/40 h-2 rounded-full overflow-hidden relative">
+                              <div
+                                className="bg-primary-600 h-full rounded-full transition-all duration-500 shadow-red-glow"
+                                style={{ width: `${idea.progressPercent || 0}%` }}
+                              />
+                            </div>
+
+                            {/* Track Progress Action Button */}
+                            <button
+                              type="button"
+                              onClick={() => setTrackedIdea(idea)}
+                              className="w-full mt-2 border border-primary-900/50 hover:border-primary-600 bg-primary-950/10 hover:bg-primary-900/20 text-primary-400 hover:text-white rounded-sm py-2 text-[10px] uppercase font-bold tracking-widest transition-all duration-200 flex items-center justify-center gap-1.5 min-h-[44px]"
+                            >
+                              <Clock size={11} />
+                              <span>{isNepali ? 'प्रगति ट्र्याक गर्नुहोस्' : 'Track Progress'}</span>
+                            </button>
                           </div>
                         </div>
                       </div>
@@ -695,6 +833,137 @@ export default function YouthIdeasPage({ params: { locale } }) {
           </div>
         </div>
       </div>
+      {/* Track Progress Modal Dialog */}
+      {trackedIdea && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 overflow-y-auto">
+          <div className="fixed inset-0 bg-black/80 backdrop-blur-sm" onClick={() => setTrackedIdea(null)} />
+          
+          <div className="relative w-[calc(100vw-24px)] sm:w-full sm:max-w-lg bg-dark-900 border border-primary-900/40 rounded-sm p-6 sm:p-8 shadow-2xl z-10 my-4 max-h-[calc(100dvh-24px)] overflow-y-auto font-sans">
+            {/* Close button with 44px touch height */}
+            <button
+              onClick={() => setTrackedIdea(null)}
+              className="absolute top-4 right-4 text-dark-400 hover:text-white min-w-[44px] min-h-[44px] flex items-center justify-center"
+              title={isNepali ? 'बन्द गर्नुहोस्' : 'Close'}
+            >
+              <X size={18} />
+            </button>
+
+            <h3 className="text-white text-lg font-bold font-display uppercase tracking-wider mb-2 pr-6">
+              {isNepali ? 'विचारको प्रगति' : 'Idea Progress'}
+            </h3>
+            
+            {/* Header info card */}
+            <div className="bg-dark-950 border border-primary-900/10 p-4 rounded-sm space-y-2 mb-6">
+              <p className="text-white text-sm font-semibold leading-relaxed">
+                {trackedIdea.idea}
+              </p>
+              <div className="flex items-center gap-2 flex-wrap text-[10px] font-bold text-dark-500 uppercase tracking-widest pt-2 border-t border-primary-900/5">
+                <span className="text-primary-400">{trackedIdea.category}</span>
+                <span>•</span>
+                <span>{trackedIdea.location}{trackedIdea.ward ? ` - ${isNepali ? 'वडा' : 'Ward'} ${trackedIdea.ward}` : ''}</span>
+              </div>
+            </div>
+
+            {/* Implementation progress bar */}
+            <div className="space-y-2 mb-6">
+              <div className="flex items-center justify-between text-[11px] font-bold">
+                <span className="text-dark-400 uppercase tracking-wider">
+                  {isNepali ? 'कार्यान्वयन प्रगति' : 'IMPLEMENTATION PROGRESS'}
+                </span>
+                <span className="text-primary-400 font-mono text-xs">
+                  {trackedIdea.progressPercent || 0}%
+                </span>
+              </div>
+              <div className="w-full bg-dark-950 border border-primary-950 h-3 rounded-full overflow-hidden relative">
+                <div
+                  className="bg-primary-600 h-full rounded-full transition-all duration-500 shadow-red-glow"
+                  style={{ width: `${trackedIdea.progressPercent || 0}%` }}
+                />
+              </div>
+            </div>
+
+            {/* Timeline updates progress timeline log list */}
+            <div className="space-y-4">
+              <h4 className="text-white text-xs font-bold uppercase tracking-widest border-b border-primary-900/10 pb-2">
+                {isNepali ? 'प्रक्रिया इतिहास' : 'PROCESS HISTORY'}
+              </h4>
+
+              {timelineLoading && trackedTimeline.length === 0 ? (
+                <div className="flex items-center justify-center py-6 text-dark-500 gap-1.5 text-xs">
+                  <Loader2 size={14} className="animate-spin" />
+                  <span>{isNepali ? 'लोड हुँदैछ...' : 'Loading history updates...'}</span>
+                </div>
+              ) : trackedTimeline.length === 0 ? (
+                <p className="text-dark-500 text-xs py-4 text-center">
+                  {isNepali ? 'कुनै प्रगति इतिहास फेला परेन।' : 'No timeline progress logs yet.'}
+                </p>
+              ) : (
+                <div className="relative pl-6 border-l border-primary-900/20 space-y-6 py-2 ml-2">
+                  {trackedTimeline.map((item, idx) => {
+                    const isLast = idx === trackedTimeline.length - 1;
+                    const dateObj = new Date(item.createdAt);
+                    const formattedDate = dateObj.toLocaleDateString(locale === 'ne' ? 'ne-NP' : 'en-US', {
+                      day: 'numeric',
+                      month: 'short',
+                      year: 'numeric'
+                    });
+                    
+                    // Map status to readable label
+                    const statusText =
+                      item.status === 'pending' ? (isNepali ? 'विचाराधीन (Submitted)' : 'Submitted') :
+                      item.status === 'under_review' ? (isNepali ? 'समीक्षाधीन (Under Review)' : 'Under Review') :
+                      item.status === 'approved' ? (isNepali ? 'स्वीकृत (Approved)' : 'Approved') :
+                      item.status === 'in_progress' ? (isNepali ? `कार्य प्रगतिमा (In Progress) — ${item.progressPercent}%` : `In Progress — ${item.progressPercent}%`) :
+                      item.status === 'implemented' ? (isNepali ? 'कार्यान्वित (Implemented) — 100%' : 'Implemented — 100%') :
+                      item.status === 'rejected' ? (isNepali ? 'अस्वीकृत (Rejected)' : 'Rejected') :
+                      item.status;
+
+                    return (
+                      <div key={item.id} className="relative">
+                        {/* Bullet point node */}
+                        <span className={`absolute -left-[31px] top-1 w-4.5 h-4.5 rounded-full flex items-center justify-center border-2 ${
+                          isLast 
+                            ? 'bg-primary-950 border-primary-500 text-primary-400 animate-pulse' 
+                            : 'bg-dark-900 border-primary-900/60 text-dark-500'
+                        }`}>
+                          <span className={`w-2 h-2 rounded-full ${isLast ? 'bg-primary-500' : 'bg-dark-600'}`} />
+                        </span>
+
+                        <div className="space-y-1">
+                          <div className="flex justify-between items-baseline flex-wrap gap-x-2">
+                            <span className={`text-xs font-bold uppercase tracking-wider ${isLast ? 'text-primary-400' : 'text-white'}`}>
+                              {statusText}
+                            </span>
+                            <span className="text-[10px] text-dark-500 font-mono">
+                              {formattedDate}
+                            </span>
+                          </div>
+                          {item.message && (
+                            <p className="text-dark-400 text-xs leading-relaxed">
+                              {item.message}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
+            {/* Close action at bottom */}
+            <div className="mt-6 pt-4 border-t border-primary-950/40 flex justify-end">
+              <button
+                type="button"
+                onClick={() => setTrackedIdea(null)}
+                className="px-5 py-2.5 border border-primary-800/60 hover:border-primary-600 rounded-sm text-xs font-bold uppercase tracking-widest text-primary-400 hover:text-primary-300 transition-all duration-200 min-h-[44px]"
+              >
+                {isNepali ? 'बन्द गर्नुहोस्' : 'Close Details'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -86,11 +86,12 @@ async function readJsonDb() {
     if (!parsed.feedback) parsed.feedback = [];
     if (!parsed.social_videos) parsed.social_videos = [];
     if (!parsed.youth_ideas) parsed.youth_ideas = [];
+    if (!parsed.youth_idea_progress_updates) parsed.youth_idea_progress_updates = [];
     
     return parsed;
   } catch (error) {
     console.error('Error reading JSON DB:', error);
-    return { connect_requests: [], volunteers: [], feedback: [], social_videos: [], youth_ideas: [] };
+    return { connect_requests: [], volunteers: [], feedback: [], social_videos: [], youth_ideas: [], youth_idea_progress_updates: [] };
   }
 }
 
@@ -192,9 +193,23 @@ export async function initDb() {
         idea TEXT NOT NULL,
         language TEXT NOT NULL,
         status TEXT NOT NULL DEFAULT 'pending',
+        progress_percent INTEGER NOT NULL DEFAULT 0,
         admin_note TEXT,
         created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+
+    // Create youth_idea_progress_updates table
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS youth_idea_progress_updates (
+        id TEXT PRIMARY KEY,
+        youth_idea_id TEXT NOT NULL REFERENCES youth_ideas(id) ON DELETE CASCADE,
+        status TEXT NOT NULL,
+        progress_percent INTEGER NOT NULL DEFAULT 0,
+        message TEXT NOT NULL,
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+        created_by TEXT DEFAULT 'admin'
       );
     `);
 
@@ -202,6 +217,7 @@ export async function initDb() {
     await client.query(`
       ALTER TABLE social_videos ADD COLUMN IF NOT EXISTS cover_source TEXT DEFAULT 'auto';
       ALTER TABLE social_videos ADD COLUMN IF NOT EXISTS thumbnail_status TEXT DEFAULT 'none';
+      ALTER TABLE youth_ideas ADD COLUMN IF NOT EXISTS progress_percent INTEGER NOT NULL DEFAULT 0;
     `);
 
     await client.query('COMMIT');
@@ -782,13 +798,17 @@ export async function getYouthIdeas() {
       idea: row.idea,
       language: row.language,
       status: row.status,
+      progressPercent: row.progress_percent || 0,
       admin_note: row.admin_note || '',
       createdAt: row.created_at,
       updatedAt: row.updated_at
     }));
   } else {
     const db = await readJsonDb();
-    return db.youth_ideas || [];
+    return (db.youth_ideas || []).map(yi => ({
+      ...yi,
+      progressPercent: yi.progressPercent || yi.progress_percent || 0
+    }));
   }
 }
 
@@ -798,8 +818,8 @@ export async function addYouthIdea(entry) {
     const id = `yi_${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
     const status = 'pending';
     const query = `
-      INSERT INTO youth_ideas (id, name, location, ward, contact_number, email, category, idea, language, status, admin_note)
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+      INSERT INTO youth_ideas (id, name, location, ward, contact_number, email, category, idea, language, status, progress_percent, admin_note)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
       RETURNING *;
     `;
     const res = await pool.query(query, [
@@ -813,8 +833,19 @@ export async function addYouthIdea(entry) {
       entry.idea,
       entry.language || 'en',
       status,
+      0,
       ''
     ]);
+    
+    // Insert initial "Submitted" timeline history update
+    await addYouthIdeaProgressUpdate({
+      youthIdeaId: id,
+      status: 'pending',
+      progressPercent: 0,
+      message: entry.language === 'ne' ? 'युवा विचार पेश गरियो।' : 'Youth idea submitted by proposer.',
+      createdBy: 'proposer'
+    });
+
     const row = res.rows[0];
     return {
       id: row.id,
@@ -827,21 +858,38 @@ export async function addYouthIdea(entry) {
       idea: row.idea,
       language: row.language,
       status: row.status,
+      progressPercent: row.progress_percent || 0,
       admin_note: row.admin_note || '',
       createdAt: row.created_at,
       updatedAt: row.updated_at
     };
   } else {
     const db = await readJsonDb();
+    const newId = `yi_${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
     const newEntry = {
-      id: `yi_${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+      id: newId,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
       status: 'pending',
+      progressPercent: 0,
       admin_note: '',
       ...entry
     };
     db.youth_ideas.push(newEntry);
+    
+    // Insert initial "Submitted" timeline history update
+    const timelineEntry = {
+      id: `yipu_${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+      youthIdeaId: newId,
+      status: 'pending',
+      progressPercent: 0,
+      message: entry.language === 'ne' ? 'युवा विचार पेश गरियो।' : 'Youth idea submitted by proposer.',
+      createdAt: new Date().toISOString(),
+      createdBy: 'proposer'
+    };
+    if (!db.youth_idea_progress_updates) db.youth_idea_progress_updates = [];
+    db.youth_idea_progress_updates.push(timelineEntry);
+
     await writeJsonDb(db);
     return newEntry;
   }
@@ -854,13 +902,23 @@ export async function updateYouthIdea(id, fields) {
     const values = [id];
     let placeholderIndex = 2;
 
-    if (fields.status !== undefined) {
-      setClause.push(`status = $${placeholderIndex++}`);
-      values.push(fields.status);
+    const dbFields = { ...fields };
+    if (dbFields.progressPercent !== undefined) {
+      dbFields.progress_percent = dbFields.progressPercent;
+      delete dbFields.progressPercent;
     }
-    if (fields.admin_note !== undefined) {
+
+    if (dbFields.status !== undefined) {
+      setClause.push(`status = $${placeholderIndex++}`);
+      values.push(dbFields.status);
+    }
+    if (dbFields.progress_percent !== undefined) {
+      setClause.push(`progress_percent = $${placeholderIndex++}`);
+      values.push(dbFields.progress_percent);
+    }
+    if (dbFields.admin_note !== undefined) {
       setClause.push(`admin_note = $${placeholderIndex++}`);
-      values.push(fields.admin_note);
+      values.push(dbFields.admin_note);
     }
 
     if (setClause.length === 0) {
@@ -887,6 +945,7 @@ export async function updateYouthIdea(id, fields) {
         idea: row.idea,
         language: row.language,
         status: row.status,
+        progressPercent: row.progress_percent || 0,
         admin_note: row.admin_note || '',
         createdAt: row.created_at,
         updatedAt: row.updated_at
@@ -897,14 +956,92 @@ export async function updateYouthIdea(id, fields) {
     const db = await readJsonDb();
     const index = db.youth_ideas.findIndex(item => item.id === id);
     if (index !== -1) {
+      // Map progressPercent to progress_percent or keep both in JSON DB
+      const progressVal = fields.progressPercent !== undefined ? fields.progressPercent : fields.progress_percent;
+      const updatedFields = { ...fields };
+      if (progressVal !== undefined) {
+        updatedFields.progressPercent = progressVal;
+        updatedFields.progress_percent = progressVal;
+      }
+      
       db.youth_ideas[index] = {
         ...db.youth_ideas[index],
-        ...fields,
+        ...updatedFields,
         updatedAt: new Date().toISOString()
       };
       await writeJsonDb(db);
       return db.youth_ideas[index];
     }
     throw new Error('Youth idea not found');
+  }
+}
+
+// --- Youth Idea Progress Updates Timeline Helpers ---
+
+export async function getYouthIdeaProgressUpdates(youthIdeaId) {
+  if (usePostgres) {
+    await initDb();
+    const res = await pool.query('SELECT * FROM youth_idea_progress_updates WHERE youth_idea_id = $1 ORDER BY created_at ASC;', [youthIdeaId]);
+    return res.rows.map(row => ({
+      id: row.id,
+      youthIdeaId: row.youth_idea_id,
+      status: row.status,
+      progressPercent: row.progress_percent,
+      message: row.message,
+      createdAt: row.created_at,
+      createdBy: row.created_by
+    }));
+  } else {
+    const db = await readJsonDb();
+    const updates = db.youth_idea_progress_updates || [];
+    return updates
+      .filter(item => item.youthIdeaId === youthIdeaId)
+      .map(item => ({
+        ...item,
+        progressPercent: item.progressPercent !== undefined ? item.progressPercent : item.progress_percent || 0
+      }))
+      .sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
+  }
+}
+
+export async function addYouthIdeaProgressUpdate(entry) {
+  if (usePostgres) {
+    await initDb();
+    const id = `yipu_${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    const query = `
+      INSERT INTO youth_idea_progress_updates (id, youth_idea_id, status, progress_percent, message, created_by)
+      VALUES ($1, $2, $3, $4, $5, $6)
+      RETURNING *;
+    `;
+    const res = await pool.query(query, [
+      id,
+      entry.youthIdeaId,
+      entry.status,
+      entry.progressPercent || 0,
+      entry.message,
+      entry.createdBy || 'admin'
+    ]);
+    const row = res.rows[0];
+    return {
+      id: row.id,
+      youthIdeaId: row.youth_idea_id,
+      status: row.status,
+      progressPercent: row.progress_percent,
+      message: row.message,
+      createdAt: row.created_at,
+      createdBy: row.created_by
+    };
+  } else {
+    const db = await readJsonDb();
+    const newEntry = {
+      id: `yipu_${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+      createdAt: new Date().toISOString(),
+      ...entry,
+      progressPercent: entry.progressPercent !== undefined ? entry.progressPercent : 0
+    };
+    if (!db.youth_idea_progress_updates) db.youth_idea_progress_updates = [];
+    db.youth_idea_progress_updates.push(newEntry);
+    await writeJsonDb(db);
+    return newEntry;
   }
 }
