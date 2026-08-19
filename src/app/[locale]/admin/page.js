@@ -287,7 +287,25 @@ export default function AdminPage({ params: { locale } }) {
 
   // Auto-detect cover image on URL paste or edit
   useEffect(() => {
-    if (!formVideoUrl) return;
+    if (!formVideoUrl) {
+      setFormPlatform('other');
+      return;
+    }
+    
+    // Parse platform immediately on the client-side for responsive UI
+    let parsedPlatform = 'other';
+    if (/youtube\.com|youtu\.be/i.test(formVideoUrl)) {
+      parsedPlatform = 'youtube';
+    } else if (/vimeo\.com/i.test(formVideoUrl)) {
+      parsedPlatform = 'vimeo';
+    } else if (/facebook\.com/i.test(formVideoUrl)) {
+      parsedPlatform = 'facebook';
+    } else if (/instagram\.com/i.test(formVideoUrl)) {
+      parsedPlatform = 'instagram';
+    } else if (/tiktok\.com/i.test(formVideoUrl)) {
+      parsedPlatform = 'tiktok';
+    }
+    setFormPlatform(parsedPlatform);
     
     // Simple URL sanity check to avoid triggering on incomplete keystrokes
     const isUrlValid = /^(https?:\/\/)?([\da-z.-]+)\.([a-z.]{2,6})([/\w .-]*)*\/?/i.test(formVideoUrl);
