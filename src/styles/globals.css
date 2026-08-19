@@ -184,85 +184,81 @@ body {
     }
   }
 
-  /* ── Mobile header layout ── */
-  .header-inner {
-    width: 100% !important;
-    max-width: 100% !important;
-    min-height: 72px !important;
-    padding: 14px 20px !important;
-    display: flex !important;
-    align-items: center !important;
-    justify-content: space-between !important;
-    gap: 0 !important;
-    box-sizing: border-box !important;
-    overflow: visible !important;
-  }
+  /* ── Mobile header layout ─────────────────────────────
+     Only ≤768px. Desktop uses Tailwind flex on .nav-inner.
+  ──────────────────────────────────────────────────────── */
+  @media (max-width: 768px) {
+    .nav-inner {
+      display: flex !important;
+      align-items: center !important;
+      justify-content: space-between !important;
+      height: auto !important;
+      min-height: 68px !important;
+      padding: 14px 20px !important;
+      box-sizing: border-box !important;
+    }
 
-  @media (max-width: 380px) {
-    .header-inner {
-      padding: 12px 16px !important;
+    /* Brand fills all available space */
+    .logo-responsive {
+      flex: 1 1 0% !important;
+      min-width: 0 !important;
+      overflow: hidden !important;
+    }
+
+    /* Hamburger always at the far right */
+    .mobile-menu-button {
+      flex: 0 0 52px !important;
+      width: 52px !important;
+      height: 52px !important;
+      min-width: 52px !important;
+      margin-left: 14px !important;
+
+      display: flex !important;
+      flex-direction: column !important;
+      align-items: center !important;
+      justify-content: center !important;
+      gap: 6px !important;
+
+      padding: 0 !important;
+      border: 1px solid rgba(226, 26, 26, 0.8) !important;
+      border-radius: 7px !important;
+      background: rgba(20, 5, 5, 0.85) !important;
+      cursor: pointer !important;
+    }
+
+    .mobile-menu-button span {
+      display: block !important;
+      width: 26px !important;
+      height: 2.5px !important;
+      background: #ffffff !important;
+      border-radius: 999px !important;
+      transition: transform 0.25s ease, opacity 0.2s ease !important;
+    }
+
+    /* Hamburger → X animation */
+    .mobile-menu-button.open span:nth-child(1) {
+      transform: translateY(8.5px) rotate(45deg) !important;
+    }
+    .mobile-menu-button.open span:nth-child(2) {
+      opacity: 0 !important;
+      transform: scaleX(0) !important;
+    }
+    .mobile-menu-button.open span:nth-child(3) {
+      transform: translateY(-8.5px) rotate(-45deg) !important;
     }
   }
 
-  /* Brand = logo icon + text, takes all leftover space */
-  .logo-responsive {
-    display: flex !important;
-    align-items: center !important;
-    gap: 12px !important;
-    flex: 1 1 0% !important;
-    min-width: 0 !important;
-    overflow: hidden !important;
-  }
+  /* Very small phones */
+  @media (max-width: 480px) {
+    .nav-inner {
+      padding: 12px 16px !important;
+    }
 
-  /* 3-bar hamburger — always pinned to the far right */
-  .mobile-menu-button {
-    flex: 0 0 52px !important;
-    width: 52px !important;
-    height: 52px !important;
-    min-width: 52px !important;
-    margin-left: 14px !important;
-
-    display: flex !important;
-    flex-direction: column !important;
-    align-items: center !important;
-    justify-content: center !important;
-    gap: 6px !important;
-
-    padding: 0 !important;
-    border: 1px solid rgba(226, 26, 26, 0.8) !important;
-    border-radius: 7px !important;
-    background: rgba(20, 5, 5, 0.85) !important;
-    cursor: pointer !important;
-    flex-shrink: 0 !important;
-  }
-
-  .mobile-menu-button span {
-    display: block !important;
-    width: 26px !important;
-    height: 2.5px !important;
-    background: #ffffff !important;
-    border-radius: 999px !important;
-    transition: transform 0.25s ease, opacity 0.2s ease !important;
-  }
-
-  /* Hamburger → X animation */
-  .mobile-menu-button.open span:nth-child(1) {
-    transform: translateY(8.5px) rotate(45deg) !important;
-  }
-  .mobile-menu-button.open span:nth-child(2) {
-    opacity: 0 !important;
-    transform: scaleX(0) !important;
-  }
-  .mobile-menu-button.open span:nth-child(3) {
-    transform: translateY(-8.5px) rotate(-45deg) !important;
-  }
-
-  @media (max-width: 380px) {
     .mobile-menu-button {
-      flex: 0 0 46px !important;
-      width: 46px !important;
-      height: 46px !important;
-      min-width: 46px !important;
+      flex: 0 0 50px !important;
+      width: 50px !important;
+      height: 50px !important;
+      min-width: 50px !important;
       margin-left: 10px !important;
     }
 

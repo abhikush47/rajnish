@@ -126,115 +126,116 @@ export default function Navbar({ locale }) {
         {/* Top accent bar */}
         <div className="h-0.5 w-full bg-gradient-to-r from-primary-950 via-primary-600 to-primary-950" />
 
-        <nav className="container-custom header-inner">
-          {/* ── Mobile: [brand · flex-1] [hamburger · flex-shrink-0]
-                Desktop: [brand] [nav links] [lang] [volunteer] [admin] ── */}
+        <nav className="container-custom">
+          <div className="nav-inner flex items-center justify-between h-16 lg:h-18">
 
-          {/* Brand logo — fills remaining space on mobile */}
-          <Link href={base} className="flex items-center gap-3 group min-w-0 logo-responsive">
-            <div className="relative flex-shrink-0">
-              <div className="w-9 h-9 bg-primary-700 rounded-sm flex items-center justify-center group-hover:bg-primary-600 transition-colors duration-200 shadow-red-glow">
-                <span className="text-white font-display text-xl tracking-tight">R</span>
+            {/* Brand logo */}
+            <Link href={base} className="flex items-center gap-3 group flex-shrink-0 min-w-0 logo-responsive">
+              <div className="relative flex-shrink-0">
+                <div className="w-9 h-9 bg-primary-700 rounded-sm flex items-center justify-center group-hover:bg-primary-600 transition-colors duration-200 shadow-red-glow">
+                  <span className="text-white font-display text-xl tracking-tight">R</span>
+                </div>
+                <div className="absolute -inset-0.5 bg-primary-600/30 rounded-sm blur-sm group-hover:blur-md transition-all duration-300" />
               </div>
-              <div className="absolute -inset-0.5 bg-primary-600/30 rounded-sm blur-sm group-hover:blur-md transition-all duration-300" />
-            </div>
-            <div className="min-w-0 overflow-hidden">
-              <div
-                className={`font-display text-base sm:text-lg tracking-wider text-white leading-none truncate ${isNepali ? 'font-nepali text-sm sm:text-base' : ''}`}
-              >
-                {isNepali ? 'रजनीश कुशवाहा' : 'RAJNISH KUSHWAHA'}
+              <div className="min-w-0 overflow-hidden">
+                <div
+                  className={`font-display text-base sm:text-lg tracking-wider text-white leading-none truncate ${isNepali ? 'font-nepali text-sm sm:text-base' : ''}`}
+                >
+                  {isNepali ? 'रजनीश कुशवाहा' : 'RAJNISH KUSHWAHA'}
+                </div>
+                <div className="text-[9px] sm:text-[10px] text-primary-400 tracking-[0.2em] uppercase font-body mt-0.5 truncate">
+                  {isNepali ? 'कालिकामाई गाउँपालिका' : 'KALIKAMAI GAUPALIKA'}
+                </div>
               </div>
-              <div className="text-[9px] sm:text-[10px] text-primary-400 tracking-[0.2em] uppercase font-body mt-0.5 truncate">
-                {isNepali ? 'कालिकामाई गाउँपालिका' : 'KALIKAMAI GAUPALIKA'}
-              </div>
-            </div>
-          </Link>
-
-          {/* Desktop Nav — hidden on mobile */}
-          <div className="hidden lg:flex items-center gap-6">
-            {primaryLinks.map((link) => (
-              <NavLink key={link.href} href={link.href}>
-                <span className={isNepali ? 'font-nepali text-xs' : ''}>{link.label}</span>
-              </NavLink>
-            ))}
-
-            {/* More dropdown */}
-            <div className="relative" ref={moreRef}>
-              <button
-                onClick={() => setShowMoreMenu(!showMoreMenu)}
-                className="flex items-center gap-1 text-sm font-semibold uppercase tracking-widest text-dark-200 hover:text-white transition-colors duration-200"
-              >
-                <span className={isNepali ? 'font-nepali text-xs' : ''}>
-                  {isNepali ? 'अझ' : 'MORE'}
-                </span>
-                <ChevronDown
-                  size={14}
-                  className={`transition-transform duration-200 ${showMoreMenu ? 'rotate-180' : ''}`}
-                />
-              </button>
-              <AnimatePresence>
-                {showMoreMenu && (
-                  <motion.div
-                    initial={{ opacity: 0, y: 8, scale: 0.96 }}
-                    animate={{ opacity: 1, y: 0, scale: 1 }}
-                    exit={{ opacity: 0, y: 8, scale: 0.96 }}
-                    transition={{ duration: 0.15 }}
-                    className="absolute top-full right-0 mt-2 w-48 bg-dark-950 border border-primary-900/40 rounded-sm shadow-card overflow-hidden"
-                  >
-                    {moreLinks.map((link) => (
-                      <Link
-                        key={link.href}
-                        href={link.href}
-                        onClick={() => setShowMoreMenu(false)}
-                        className="block px-4 py-2.5 text-xs font-semibold uppercase tracking-widest text-dark-200 hover:text-white hover:bg-primary-900/30 transition-all duration-150"
-                      >
-                        <span className={isNepali ? 'font-nepali' : ''}>{link.label}</span>
-                      </Link>
-                    ))}
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </div>
-          </div>
-
-          {/* Desktop CTAs — hidden on mobile */}
-          <div className="hidden lg:flex items-center gap-3">
-            <motion.button
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              onClick={toggleLocale}
-              className="flex items-center gap-1.5 px-3 py-1.5 border border-primary-800/60 hover:border-primary-600 rounded-sm text-xs font-bold tracking-wider text-primary-400 hover:text-primary-300 hover:bg-primary-900/20 transition-all duration-200"
-            >
-              <Globe size={12} />
-              <span>{t('toggleLang')}</span>
-            </motion.button>
-
-            <Link
-              href={`${base}/volunteer`}
-              className="inline-flex items-center px-4 py-2 bg-primary-700 hover:bg-primary-600 text-white text-xs font-bold uppercase tracking-widest rounded-sm transition-all duration-200 hover:shadow-red-glow"
-            >
-              <span className={isNepali ? 'font-nepali' : ''}>{t('volunteer')}</span>
             </Link>
 
-            <Link
-              href={`${base}/admin`}
-              className="inline-flex items-center px-4 py-2 border border-primary-800 hover:border-primary-600 text-primary-400 hover:text-white text-xs font-bold uppercase tracking-widest rounded-sm transition-all duration-200"
-            >
-              <span className={isNepali ? 'font-nepali' : ''}>{t('admin')}</span>
-            </Link>
-          </div>
+            {/* Desktop Nav */}
+            <div className="hidden lg:flex items-center gap-6">
+              {primaryLinks.map((link) => (
+                <NavLink key={link.href} href={link.href}>
+                  <span className={isNepali ? 'font-nepali text-xs' : ''}>{link.label}</span>
+                </NavLink>
+              ))}
 
-          {/* Mobile hamburger — direct sibling, always pins to the right */}
-          <button
-            onClick={() => setIsOpen(!isOpen)}
-            className={`lg:hidden mobile-menu-button ${isOpen ? 'open' : ''}`}
-            aria-label={isOpen ? 'Close menu' : 'Open menu'}
-            aria-expanded={isOpen}
-          >
-            <span />
-            <span />
-            <span />
-          </button>
+              {/* More dropdown */}
+              <div className="relative" ref={moreRef}>
+                <button
+                  onClick={() => setShowMoreMenu(!showMoreMenu)}
+                  className="flex items-center gap-1 text-sm font-semibold uppercase tracking-widest text-dark-200 hover:text-white transition-colors duration-200"
+                >
+                  <span className={isNepali ? 'font-nepali text-xs' : ''}>
+                    {isNepali ? 'अझ' : 'MORE'}
+                  </span>
+                  <ChevronDown
+                    size={14}
+                    className={`transition-transform duration-200 ${showMoreMenu ? 'rotate-180' : ''}`}
+                  />
+                </button>
+                <AnimatePresence>
+                  {showMoreMenu && (
+                    <motion.div
+                      initial={{ opacity: 0, y: 8, scale: 0.96 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      exit={{ opacity: 0, y: 8, scale: 0.96 }}
+                      transition={{ duration: 0.15 }}
+                      className="absolute top-full right-0 mt-2 w-48 bg-dark-950 border border-primary-900/40 rounded-sm shadow-card overflow-hidden"
+                    >
+                      {moreLinks.map((link) => (
+                        <Link
+                          key={link.href}
+                          href={link.href}
+                          onClick={() => setShowMoreMenu(false)}
+                          className="block px-4 py-2.5 text-xs font-semibold uppercase tracking-widest text-dark-200 hover:text-white hover:bg-primary-900/30 transition-all duration-150"
+                        >
+                          <span className={isNepali ? 'font-nepali' : ''}>{link.label}</span>
+                        </Link>
+                      ))}
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+            </div>
+
+            {/* Desktop CTAs */}
+            <div className="hidden lg:flex items-center gap-3">
+              <motion.button
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={toggleLocale}
+                className="flex items-center gap-1.5 px-3 py-1.5 border border-primary-800/60 hover:border-primary-600 rounded-sm text-xs font-bold tracking-wider text-primary-400 hover:text-primary-300 hover:bg-primary-900/20 transition-all duration-200"
+              >
+                <Globe size={12} />
+                <span>{t('toggleLang')}</span>
+              </motion.button>
+
+              <Link
+                href={`${base}/volunteer`}
+                className="inline-flex items-center px-4 py-2 bg-primary-700 hover:bg-primary-600 text-white text-xs font-bold uppercase tracking-widest rounded-sm transition-all duration-200 hover:shadow-red-glow"
+              >
+                <span className={isNepali ? 'font-nepali' : ''}>{t('volunteer')}</span>
+              </Link>
+
+              <Link
+                href={`${base}/admin`}
+                className="inline-flex items-center px-4 py-2 border border-primary-800 hover:border-primary-600 text-primary-400 hover:text-white text-xs font-bold uppercase tracking-widest rounded-sm transition-all duration-200"
+              >
+                <span className={isNepali ? 'font-nepali' : ''}>{t('admin')}</span>
+              </Link>
+            </div>
+
+            {/* Mobile hamburger — 3 animated bars */}
+            <button
+              onClick={() => setIsOpen(!isOpen)}
+              className={`lg:hidden mobile-menu-button ${isOpen ? 'open' : ''}`}
+              aria-label={isOpen ? 'Close menu' : 'Open menu'}
+              aria-expanded={isOpen}
+            >
+              <span />
+              <span />
+              <span />
+            </button>
+
+          </div>
         </nav>
       </motion.header>
 
