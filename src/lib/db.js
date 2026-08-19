@@ -1,21 +1,36 @@
 import fs from 'fs';
 import path from 'path';
 
-const DB_DIR = path.join(process.cwd(), 'data');
-const DB_FILE = path.join(DB_DIR, 'db.json');
+const BUNDLED_DB = path.join(process.cwd(), 'data', 'db.json');
+const WRITABLE_DB = path.join('/tmp', 'db.json');
+
+// Get active database file path
+function getDbFilePath() {
+  if (fs.existsSync(WRITABLE_DB)) {
+    return WRITABLE_DB;
+  }
+  return BUNDLED_DB;
+}
 
 // Initialize database file
 function initDb() {
-  if (!fs.existsSync(DB_DIR)) {
-    fs.mkdirSync(DB_DIR, { recursive: true });
-  }
-  if (!fs.existsSync(DB_FILE)) {
-    fs.writeFileSync(DB_FILE, JSON.stringify({
-      connect_requests: [],
-      volunteers: [],
-      feedback: [],
-      social_videos: []
-    }, null, 2), 'utf8');
+  if (!fs.existsSync(WRITABLE_DB)) {
+    try {
+      if (fs.existsSync(BUNDLED_DB)) {
+        const data = fs.readFileSync(BUNDLED_DB, 'utf8');
+        fs.writeFileSync(WRITABLE_DB, data, 'utf8');
+      } else {
+        const initialData = JSON.stringify({
+          connect_requests: [],
+          volunteers: [],
+          feedback: [],
+          social_videos: []
+        }, null, 2);
+        fs.writeFileSync(WRITABLE_DB, initialData, 'utf8');
+      }
+    } catch (err) {
+      console.warn('Could not initialize database in /tmp, falling back to read-only bundled DB:', err.message);
+    }
   }
 }
 
@@ -23,7 +38,8 @@ function initDb() {
 async function readDb() {
   initDb();
   try {
-    const data = await fs.promises.readFile(DB_FILE, 'utf8');
+    const filePath = getDbFilePath();
+    const data = await fs.promises.readFile(filePath, 'utf8');
     const parsed = JSON.parse(data);
     
     // Ensure all collections exist
@@ -34,19 +50,23 @@ async function readDb() {
     
     return parsed;
   } catch (error) {
-    console.error('Error reading local db.json:', error);
+    console.error('Error reading database:', error);
     return { connect_requests: [], volunteers: [], feedback: [], social_videos: [] };
   }
 }
 
 // Write database helper
 async function writeDb(data) {
-  initDb();
   try {
-    await fs.promises.writeFile(DB_FILE, JSON.stringify(data, null, 2), 'utf8');
+    await fs.promises.writeFile(WRITABLE_DB, JSON.stringify(data, null, 2), 'utf8');
   } catch (error) {
-    console.error('Error writing local db.json:', error);
-    throw new Error('Database write error');
+    console.error('Error writing database to /tmp:', error);
+    try {
+      await fs.promises.writeFile(BUNDLED_DB, JSON.stringify(data, null, 2), 'utf8');
+    } catch (fallbackError) {
+      console.error('Error writing to bundled DB:', fallbackError);
+      throw new Error('Database write error: Read-only filesystem');
+    }
   }
 }
 
