@@ -1,3 +1,4 @@
+import { NextResponse } from 'next/server';
 import { verifyAdminToken } from '@/lib/admin-auth';
 import { getConnectRequests, getVolunteers, getFeedback, getSocialVideos } from '@/lib/db';
 
@@ -10,7 +11,7 @@ export async function GET(req) {
       const isConfigError = authError.message.includes('MISSING_FIREBASE_SERVICE_ACCOUNT') || 
                             authError.message.includes('INVALID_FIREBASE_SERVICE_ACCOUNT');
       
-      return Response.json(
+      return NextResponse.json(
         { 
           success: false, 
           error: authError.message,
@@ -26,7 +27,7 @@ export async function GET(req) {
     const feedback = await getFeedback();
     const socialVideos = await getSocialVideos();
 
-    return Response.json({
+    return NextResponse.json({
       success: true,
       connect_requests: connectRequests,
       volunteers,
@@ -35,6 +36,6 @@ export async function GET(req) {
     });
   } catch (error) {
     console.error('Error fetching admin data:', error);
-    return Response.json({ success: false, error: error.message }, { status: 500 });
+    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
   }
 }

@@ -1,3 +1,4 @@
+import { NextResponse } from 'next/server';
 import nodemailer from "nodemailer";
 import { addFeedback } from "@/lib/db";
 
@@ -6,7 +7,7 @@ export async function POST(req) {
     const { name, email, message } = await req.json();
 
     if (!name || !email || !message) {
-      return Response.json({ success: false, error: "Missing required fields" }, { status: 400 });
+      return NextResponse.json({ success: false, error: "Missing required fields" }, { status: 400 });
     }
 
     // 1. Save to Database
@@ -43,9 +44,9 @@ export async function POST(req) {
       console.error("Nodemailer failed to send email notification:", mailError);
     }
 
-    return Response.json({ success: true, data: newFeedback });
+    return NextResponse.json({ success: true, data: newFeedback });
   } catch (error) {
     console.error("Error handling contact submission:", error);
-    return Response.json({ success: false, error: error.message }, { status: 500 });
+    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
   }
 }

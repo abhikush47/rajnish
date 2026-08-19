@@ -1,3 +1,4 @@
+import { NextResponse } from 'next/server';
 import { verifyAdminToken } from '@/lib/admin-auth';
 import { 
   updateConnectRequestStatus, 
@@ -14,7 +15,7 @@ export async function POST(req) {
     } catch (authError) {
       const isConfigError = authError.message.includes('MISSING_FIREBASE_SERVICE_ACCOUNT') || 
                             authError.message.includes('INVALID_FIREBASE_SERVICE_ACCOUNT');
-      return Response.json(
+      return NextResponse.json(
         { success: false, error: authError.message, isConfigError }, 
         { status: isConfigError ? 500 : 401 }
       );
@@ -23,7 +24,7 @@ export async function POST(req) {
     const { id, type, status } = await req.json();
 
     if (!id || !type || !status) {
-      return Response.json({ success: false, error: 'Missing required parameters (id, type, status)' }, { status: 400 });
+      return NextResponse.json({ success: false, error: 'Missing required parameters (id, type, status)' }, { status: 400 });
     }
 
     let updatedRecord;
@@ -36,12 +37,12 @@ export async function POST(req) {
     } else if (type === 'social_video') {
       updatedRecord = await updateSocialVideo(id, { status });
     } else {
-      return Response.json({ success: false, error: 'Invalid record type' }, { status: 400 });
+      return NextResponse.json({ success: false, error: 'Invalid record type' }, { status: 400 });
     }
 
-    return Response.json({ success: true, data: updatedRecord });
+    return NextResponse.json({ success: true, data: updatedRecord });
   } catch (error) {
     console.error('Error updating record status:', error);
-    return Response.json({ success: false, error: error.message }, { status: 500 });
+    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
   }
 }
