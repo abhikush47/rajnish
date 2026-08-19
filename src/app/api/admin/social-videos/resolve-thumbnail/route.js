@@ -12,6 +12,15 @@ cloudinary.config({
 const BROWSER_UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
 const CRAWLER_UA = 'facebookexternalhit/1.1; facebot; Twitterbot/1.0; Discordbot/2.0';
 
+// Server-side URL Normalizer helper
+function normalizeUrl(value) {
+  let url = value.trim();
+  if (!/^https?:\/\//i.test(url)) {
+    url = `https://${url}`;
+  }
+  return url;
+}
+
 export async function POST(req) {
   try {
     // 1. Verify admin session
@@ -31,8 +40,36 @@ export async function POST(req) {
       return NextResponse.json({ success: false, error: 'URL is required' }, { status: 400 });
     }
 
-    const preview = await getPreviewMetadata(url);
+    // Diagnostic logging
+    console.log(`[Thumbnail Resolver] Request received`);
+    console.log(`[Thumbnail Resolver] URL: ${url}`);
+
+    // Normalize URL
+    const normalizedUrl = normalizeUrl(url);
+    
+    // Validate URL
+    let parsed;
+    try {
+      parsed = new URL(normalizedUrl);
+    } catch (parseErr) {
+      console.log(`[Thumbnail Resolver] URL Validation failed: Invalid URL structure`);
+      return NextResponse.json({
+        success: false,
+        platform: 'other',
+        thumbnailUrl: null,
+        error: 'Invalid video URL structure'
+      }, { status: 400 });
+    }
+
+    // Detect platform
+    const platform = detectPlatform(normalizedUrl);
+    console.log(`[Thumbnail Resolver] Platform: ${platform}`);
+    console.log(`[Thumbnail Resolver] Resolving metadata...`);
+
+    const preview = await getPreviewMetadata(normalizedUrl, platform);
+    
     if (preview.thumbnailUrl) {
+      console.log(`[Thumbnail Resolver] Thumbnail: FOUND`);
       return NextResponse.json({
         success: true,
         platform: preview.platform,
@@ -40,17 +77,40 @@ export async function POST(req) {
         source: preview.source
       });
     } else {
+      console.log(`[Thumbnail Resolver] Thumbnail: NOT FOUND`);
+      
+      // Do NOT return 404 simply because a thumbnail could not be found. 
+      // Return 200 OK with success: false to signal detection failure cleanly to the UI.
+      const errorMsg = platform === 'facebook' 
+        ? 'Facebook did not expose a publicly accessible thumbnail for this URL'
+        : 'No publicly accessible thumbnail was found';
+
       return NextResponse.json({
         success: false,
         platform: preview.platform,
         thumbnailUrl: null,
-        error: 'No publicly accessible thumbnail was found'
-      }, { status: 404 });
+        error: errorMsg
+      }, { status: 200 });
     }
   } catch (error) {
     console.error('Error in resolve-thumbnail API:', error);
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });
   }
+}
+
+function detectPlatform(url) {
+  if (/youtube\.com|youtu\.be/i.test(url)) {
+    return 'youtube';
+  } else if (/vimeo\.com/i.test(url)) {
+    return 'vimeo';
+  } else if (/facebook\.com/i.test(url)) {
+    return 'facebook';
+  } else if (/instagram\.com/i.test(url)) {
+    return 'instagram';
+  } else if (/tiktok\.com/i.test(url)) {
+    return 'tiktok';
+  }
+  return 'other';
 }
 
 async function validateImage(url) {
@@ -61,7 +121,6 @@ async function validateImage(url) {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 4000);
     
-    // Add Browser User-Agent header so CDN servers (like Facebook) do not block validation check with 403 Forbidden
     const res = await fetch(url, { 
       method: 'GET', 
       headers: { 'User-Agent': BROWSER_UA },
@@ -95,22 +154,7 @@ function extractMetaTag(html, propertyName) {
   return null;
 }
 
-async function getPreviewMetadata(url) {
-  let platform = 'other';
-  const cleanUrl = url.trim();
-
-  if (/youtube\.com|youtu\.be/i.test(cleanUrl)) {
-    platform = 'youtube';
-  } else if (/vimeo\.com/i.test(cleanUrl)) {
-    platform = 'vimeo';
-  } else if (/facebook\.com/i.test(cleanUrl)) {
-    platform = 'facebook';
-  } else if (/instagram\.com/i.test(cleanUrl)) {
-    platform = 'instagram';
-  } else if (/tiktok\.com/i.test(cleanUrl)) {
-    platform = 'tiktok';
-  }
-
+async function getPreviewMetadata(cleanUrl, platform) {
   const sources = [];
 
   // 1. YouTube platform extraction
@@ -169,7 +213,6 @@ async function getPreviewMetadata(url) {
   }
 
   // 4. HTML Open Graph / Twitter Card parsing
-  // Try Browser User Agent first (very successful for Facebook Reels), then Crawler User Agent
   const userAgentsToTry = [BROWSER_UA, CRAWLER_UA];
   for (const ua of userAgentsToTry) {
     try {
@@ -197,7 +240,6 @@ async function getPreviewMetadata(url) {
         const secureImage = extractMetaTag(html, 'og:image:secure_url');
         if (secureImage) sources.push({ url: decodeHtmlEntities(secureImage), source: 'og:image:secure_url' });
 
-        // If we succeeded in getting tags, break and proceed to validation
         if (ogImage || twitterImage || secureImage) {
           break;
         }

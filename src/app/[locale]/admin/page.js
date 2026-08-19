@@ -61,6 +61,7 @@ export default function AdminPage({ params: { locale } }) {
   const [formCoverUrl, setFormCoverUrl] = useState('');
   const [formCoverSource, setFormCoverSource] = useState('auto'); // auto, custom
   const [formThumbnailStatus, setFormThumbnailStatus] = useState('none'); // auto, custom, none, failed
+  const [formErrorMsg, setFormErrorMsg] = useState(''); // Custom resolution error details
   const [formPlatform, setFormPlatform] = useState('other');
   const [formStatus, setFormStatus] = useState('draft'); // draft, published
 
@@ -228,6 +229,7 @@ export default function AdminPage({ params: { locale } }) {
     setFormCoverUrl('');
     setFormCoverSource('auto');
     setFormThumbnailStatus('none');
+    setFormErrorMsg('');
     setFormPlatform('other');
     setFormStatus('draft');
     setVideoModalOpen(true);
@@ -243,6 +245,7 @@ export default function AdminPage({ params: { locale } }) {
     setFormCoverUrl(video.cover_image_url || '');
     setFormCoverSource(video.cover_source || 'auto');
     setFormThumbnailStatus(video.thumbnailStatus || 'none');
+    setFormErrorMsg('');
     setFormPlatform(video.platform || 'other');
     setFormStatus(video.status || 'draft');
     setVideoModalOpen(true);
@@ -251,6 +254,7 @@ export default function AdminPage({ params: { locale } }) {
   const handleAutoDetectCover = async () => {
     if (!formVideoUrl) return;
     setPreviewLoading(true);
+    setFormErrorMsg('');
     try {
       const res = await fetch('/api/admin/social-videos/resolve-thumbnail', {
         method: 'POST',
@@ -261,25 +265,45 @@ export default function AdminPage({ params: { locale } }) {
         body: JSON.stringify({ url: formVideoUrl })
       });
 
-      if (res.ok) {
+      if (res.status === 404) {
+        setFormCoverUrl('');
+        setFormThumbnailStatus('failed');
+        setFormErrorMsg(isNepali 
+          ? 'थम्बनेल सेवा उपलब्ध छैन। कृपया प्रशासकलाई सम्पर्क गर्नुहोस्।' 
+          : 'Thumbnail service is not available. Please contact the administrator.'
+        );
+      } else if (res.ok) {
         const result = await res.json();
         if (result.success && result.thumbnailUrl) {
           setFormCoverUrl(result.thumbnailUrl);
           setFormCoverSource(result.source || 'auto');
           setFormThumbnailStatus('auto');
+          setFormErrorMsg('');
           if (result.platform) setFormPlatform(result.platform);
         } else {
           setFormCoverUrl('');
           setFormThumbnailStatus('failed');
+          setFormErrorMsg(result.error || (isNepali 
+            ? 'यो भिडियोको लागि कुनै सार्वजनिक कभर फेला परेन।' 
+            : 'No publicly accessible cover was found for this video.'
+          ));
         }
       } else {
         setFormCoverUrl('');
         setFormThumbnailStatus('failed');
+        setFormErrorMsg(isNepali 
+          ? 'थम्बनेल पत्ता लगाउने कार्य असफल भयो।' 
+          : 'Cover auto-detection failed.'
+        );
       }
     } catch (err) {
       console.error(err);
       setFormCoverUrl('');
       setFormThumbnailStatus('failed');
+      setFormErrorMsg(isNepali 
+        ? 'कभर पत्ता लगाउने कार्यमा त्रुटि भयो।' 
+        : 'Error during cover auto-detection.'
+      );
     } finally {
       setPreviewLoading(false);
     }
@@ -1390,7 +1414,7 @@ export default function AdminPage({ params: { locale } }) {
                       {formThumbnailStatus === 'failed' && (
                         <div className="space-y-1.5 p-2.5 bg-red-950/20 border border-red-950 rounded-sm">
                           <p className="text-red-400 font-semibold text-xs leading-relaxed">
-                            ⚠ {isNepali ? 'यो भिडियोको लागि कभर स्वतः पत्ता लगाउन असमर्थ।' : 'Unable to automatically detect a cover for this video.'}
+                            ⚠ {formErrorMsg || (isNepali ? 'यो भिडियोको लागि कभर स्वतः पत्ता लगाउन असमर्थ।' : 'Unable to automatically detect a cover for this video.')}
                           </p>
                           <p className="text-[10px] text-dark-400">
                             {isNepali ? 'कृपया कभर इमेज म्यानुअल्ली अपलोड गर्नुहोस्।' : 'Please upload a cover image manually.'}
