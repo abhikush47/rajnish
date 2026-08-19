@@ -5,7 +5,6 @@ import { motion } from 'framer-motion';
 import { useTranslations } from 'next-intl';
 import { useForm } from 'react-hook-form';
 import { CheckCircle2, Users, Loader2, AlertCircle } from 'lucide-react';
-import { saveDoc } from '@/lib/firestore';
 
 export default function VolunteerPage({ params: { locale } }) {
   const t = useTranslations('volunteer');
@@ -20,26 +19,33 @@ export default function VolunteerPage({ params: { locale } }) {
     setLoading(true);
     setError(null);
     try {
-      await saveDoc('volunteers', {
-        name:      data.name,
-        phone:     data.phone,
-        email:     data.email    || '',
-        village:   data.village,
-        interests: Array.isArray(data.interests)
-                     ? data.interests.join(', ')
-                     : (data.interests || ''),
-        locale,
+      const res = await fetch('/api/volunteer', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name:      data.name,
+          phone:     data.phone,
+          email:     data.email    || '',
+          village:   data.village,
+          interests: Array.isArray(data.interests)
+                       ? data.interests.join(', ')
+                       : (data.interests || ''),
+          locale,
+        })
       });
+
+      const resData = await res.json();
+      if (!res.ok || !resData.success) {
+        throw new Error(resData.error || 'Failed to save');
+      }
+
       setSubmitted(true);
       reset();
     } catch (err) {
       console.error('Submit error:', err.message);
-      const isMissingEnv = err.message?.includes('MISSING_ENV');
       setError(isNepali
         ? 'डेटा सेभ गर्न समस्या भयो। पुनः प्रयास गर्नुहोस्।'
-        : isMissingEnv
-          ? 'Firebase not configured. Add your .env.local keys and restart the server.'
-          : 'Failed to save. Please check your connection and try again.');
+        : 'Failed to save. Please check your connection and try again.');
     } finally {
       setLoading(false);
     }

@@ -1,0 +1,43 @@
+{
+  "connect_requests": [
+    {
+      "id": "1787122547681-h479cld6o",
+      "createdAt": "2026-08-19T06:55:47.681Z",
+      "status": "approved",
+      "name": "Abhishek Kushwaha",
+      "palika": "Bahudarmai Nagarpalika",
+      "ward": "5",
+      "contact": "+9779749939797"
+    }
+  ],
+  "volunteers": [],
+  "feedback": [],
+  "social_videos": [
+    {
+      "id": "sv_1787122046364-pa1ifnwln",
+      "createdAt": "2026-08-19T06:47:26.364Z",
+      "updatedAt": "2026-08-19T06:47:26.364Z",
+      "status": "published",
+      "title_en": "AI Development vs. Ground Monitoring",
+      "description_en": "Development through AI **vs.** Monitoring on the Ground\n\nThe Mayor’s development is visible in AI,\nbut **Ranish Kushwaha Ji’s monitoring is visible on the ground.**\n",
+      "title_ne": "एआई विकास बनाम जमिनमै अनुगमन",
+      "description_ne": "AI को विकास VS जमिनमा पुगेर अनुगमन \nमेयर साहेबको विकास AI मा देखिन्छ,\nतर राजनीश कुशवाहा जी को अनुगमन जमिनमै देखिन्छ।",
+      "video_url": "https://www.facebook.com/reel/1588805102967146",
+      "platform": "facebook",
+      "cover_image_url": "https://scontent.fbbi2-3.fna.fbcdn.net/v/t15.5256-10/775259706_1504342764794143_3720381971472553828_n.jpg?stp=cmp514_dst-jpg_p600x1066_tt6_u&_nc_cat=110&cb=c87d210d-e609a9eb&ccb=1-7&_nc_sid=487f02&_nc_ohc=dLIHRgRxb3sQ7kNvwEUePLe&_nc_oc=AdqElCGqqHogEnX2U41mYQv8kVJmjY6Rv4vk5aKcWHfzJOmQc2obm_ThyZwRQ4Upg8o&_nc_zt=23&_nc_ht=scontent.fbbi2-3.fna&_nc_gid=6W5E2WBkrctctz3oXeku5w&_nc_ss=7f289&oh=00_AQFNmoghG2MliE63IlIh908k_fe0m3vK1nVSbwvTyh0k2g&oe=6A8B327A"
+    },
+    {
+      "id": "sv_1787122667870-veq48qdh7",
+      "createdAt": "2026-08-19T06:57:47.870Z",
+      "updatedAt": "2026-08-19T06:57:47.870Z",
+      "status": "published",
+      "title_en": "See the Road Condition Yourself",
+      "description_en": "The road condition in Kalikamai Rural Municipality–2 needs urgent attention. Elected representatives and the concerned authorities should visit the area themselves and see the situation on the ground.",
+      "title_ne": "सडकको अवस्था आफैं हेर्नुहोस्",
+      "description_ne": "कालिकामाई गाउँपालिका–२ को सडकको अवस्था गम्भीर रहेको छ। जनप्रतिनिधि तथा सम्बन्धित निकायले एकपटक आफैं स्थलगत निरीक्षण गरी वास्तविक अवस्था बुझ्न र आवश्यक पहल गर्न जरुरी छ।",
+      "video_url": "https://www.facebook.com/reel/1508312614667837",
+      "platform": "facebook",
+      "cover_image_url": "https://scontent.fbbi2-1.fna.fbcdn.net/v/t15.5256-10/774059398_1283437793743633_5516805932178489991_n.jpg?stp=cmp514_dst-jpg_p600x1066_tt6_u&_nc_cat=108&cb=c87d210d-e609a9eb&ccb=1-7&_nc_sid=487f02&_nc_ohc=nYL4x6b1QlQQ7kNvwEzfdVo&_nc_oc=AdqJvea8UWjaplp0LmcAidzrsaBtnx-PmYWycA915oiYek1JKVXTnmPMYfAT0sPihIQ&_nc_zt=23&_nc_ht=scontent.fbbi2-1.fna&_nc_gid=fsRoy0JC2aD9dmViwDPJeg&_nc_ss=7f289&oh=00_AQET278834uK0_PHLWcvDXCITyGiACDhmLavX6T2rXnltA&oe=6A8B10A8"
+    }
+  ]
+}

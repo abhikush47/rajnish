@@ -89,6 +89,7 @@ export default function Navbar({ locale }) {
     { href: `${base}/volunteer`, label: t('volunteer') },
     { href: `${base}/youth-ideas`, label: t('youthIdeas') },
     { href: `${base}/contact`, label: t('contact') },
+    { href: `${base}/admin`, label: t('admin') },
   ];
 
   const allLinks = [...primaryLinks, ...moreLinks];
@@ -201,6 +202,14 @@ export default function Navbar({ locale }) {
                 <span className={isNepali ? 'font-nepali' : ''}>{t('volunteer')}</span>
               </Link>
 
+              {/* Admin CTA */}
+              <Link
+                href={`${base}/admin`}
+                className="hidden sm:inline-flex items-center px-4 py-2 border border-primary-800 hover:border-primary-600 text-primary-400 hover:text-white text-xs font-bold uppercase tracking-widest rounded-sm transition-all duration-200"
+              >
+                <span className={isNepali ? 'font-nepali' : ''}>{t('admin')}</span>
+              </Link>
+
               {/* Mobile menu button */}
               <button
                 onClick={() => setIsOpen(!isOpen)}
@@ -306,13 +315,20 @@ export default function Navbar({ locale }) {
 
               {/* Social links */}
               <div className="p-4 flex gap-3">
-                {['facebook', 'instagram', 'twitter', 'youtube'].map((social) => (
+                {[
+                  { name: 'facebook', label: 'F', href: 'https://www.facebook.com/profile.php?id=61580541899428' },
+                  { name: 'instagram', label: 'I', href: 'https://www.instagram.com/rajnish_moksha/' },
+                  { name: 'whatsapp', label: 'W', href: 'https://wa.me/9779851359115' },
+                  { name: 'youtube', label: 'Y', href: '#' }
+                ].map((social) => (
                   <a
-                    key={social}
-                    href="#"
+                    key={social.name}
+                    href={social.href}
+                    target={social.href !== '#' ? '_blank' : undefined}
+                    rel={social.href !== '#' ? 'noopener noreferrer' : undefined}
                     className="w-8 h-8 flex items-center justify-center border border-primary-900/50 rounded-sm text-dark-400 hover:text-white hover:border-primary-600 transition-all duration-200 text-xs font-bold uppercase"
                   >
-                    {social[0].toUpperCase()}
+                    {social.label}
                   </a>
                 ))}
               </div>

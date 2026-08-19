@@ -12,6 +12,7 @@
     "contact": "Contact",
     "volunteer": "Volunteer",
     "youthIdeas": "Youth Ideas",
+    "admin": "Admin",
     "toggleLang": "नेपाली"
   },
   "hero": {
@@ -100,5 +101,95 @@
     "loading": "Loading...",
     "error": "Something went wrong",
     "back": "Back"
+  },
+  "connect": {
+    "cta": "Connect with Rajnish",
+    "title": "Connect with Rajnish",
+    "fullName": "Full Name",
+    "palika": "Palika",
+    "ward": "Ward No.",
+    "contact": "Contact Number",
+    "submit": "Submit",
+    "success": "Connection request submitted successfully!",
+    "error": "Failed to submit request. Please try again.",
+    "submitting": "Submitting...",
+    "requiredName": "Full Name is required",
+    "requiredPalika": "Palika is required",
+    "requiredWard": "Ward Number is required",
+    "requiredContact": "Contact Number is required",
+    "invalidContact": "Please enter a valid phone number"
+  },
+  "admin": {
+    "title": "Admin Dashboard",
+    "loginTitle": "Administrator Portal",
+    "loginSubtitle": "Authorized Access Only. Please sign in using an authorized Google account.",
+    "loginBtn": "Sign In with Google",
+    "logoutBtn": "Sign Out",
+    "unauthorized": "Access Denied: Your email ({email}) is not authorized.",
+    "totalConnect": "Total Connect Requests",
+    "totalVolunteers": "Volunteer Applications",
+    "totalFeedback": "Total Feedback Messages",
+    "recentSubmissions": "Recent Submissions",
+    "noSubmissions": "No submissions found.",
+    "tabs": {
+      "dashboard": "Dashboard",
+      "connect": "Connect Requests",
+      "volunteers": "Volunteers",
+      "feedback": "Feedback"
+    },
+    "table": {
+      "name": "Name",
+      "palika": "Palika",
+      "ward": "Ward",
+      "contact": "Contact",
+      "email": "Email",
+      "interests": "Interests",
+      "message": "Message",
+      "date": "Date",
+      "status": "Status",
+      "actions": "Actions"
+    },
+    "status": {
+      "pending": "Pending",
+      "contacted": "Contacted",
+      "approved": "Approved",
+      "rejected": "Rejected",
+      "read": "Read",
+      "unread": "Unread"
+    },
+    "actions": {
+      "markContacted": "Mark Contacted",
+      "approve": "Approve",
+      "reject": "Reject",
+      "markRead": "Mark Read",
+      "markUnread": "Mark Unread"
+    },
+    "confirmations": {
+      "statusUpdated": "Status updated successfully!"
+    },
+    "socialVideos": "Social Work Videos",
+    "totalVideos": "Total Social Videos",
+    "addVideo": "Add Video",
+    "editVideo": "Edit Video",
+    "delete": "Delete",
+    "confirmDelete": "Are you sure you want to delete this record? This action cannot be undone.",
+    "videoTitleEn": "English Title",
+    "videoTitleNe": "Nepali Title",
+    "videoDescEn": "English Description",
+    "videoDescNe": "Nepali Description",
+    "videoUrl": "Video URL",
+    "coverImage": "Cover Image",
+    "autoDetectCover": "Auto Detect Cover",
+    "uploadCover": "Upload Cover",
+    "saveVideo": "Save Video",
+    "published": "Published",
+    "draft": "Draft"
+  },
+  "social_work": {
+    "videosTitle": "Videos",
+    "videosSubtitle": "Watch our work and community initiatives.",
+    "goToVideo": "Go to Video",
+    "close": "Close"
   }
 }
+

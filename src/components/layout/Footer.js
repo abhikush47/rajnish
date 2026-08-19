@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useTranslations } from 'next-intl';
 import { motion } from 'framer-motion';
-import { Facebook, Instagram, Youtube, Twitter, MapPin, Phone, Mail, Heart } from 'lucide-react';
+import { Facebook, Instagram, Youtube, MessageCircle, MapPin, Phone, Mail, Heart } from 'lucide-react';
 
 export default function Footer({ locale }) {
   const t = useTranslations();
@@ -35,7 +35,7 @@ export default function Footer({ locale }) {
     { icon: Facebook, href: 'https://www.facebook.com/profile.php?id=61580541899428', label: 'Facebook' },
     { icon: Instagram, href: 'https://www.instagram.com/rajnish_moksha/', label: 'Instagram' },
     { icon: Youtube, href: '#', label: 'YouTube' },
-    { icon: Twitter, href: '#', label: 'Twitter' },
+    { icon: MessageCircle, href: 'https://wa.me/9779851359115', label: 'WhatsApp' },
   ];
 
   return (
@@ -126,7 +126,11 @@ export default function Footer({ locale }) {
         {/* Bottom bar */}
         <div className="mt-8 pt-6 border-t border-primary-900/20 flex flex-col sm:flex-row items-center justify-between gap-4">
           <p className={`text-dark-600 text-xs ${isNepali ? 'font-nepali' : ''}`}>
-            © {year} {isNepali ? 'रजनीश कुशवाहा। सर्वाधिकार सुरक्षित।' : 'Rajnish Kushwaha. All Rights Reserved.'}
+            © {year} {isNepali ? 'रजनीश कुशवाहा। सर्वाधिकार सुरक्षित।' : 'Rajnish Kushwaha. All Rights Reserved.'}{' '}
+            •{' '}
+            <Link href={`${base}/admin`} className="hover:text-primary-400 transition-colors">
+              {isNepali ? 'प्रशासक लगइन' : 'Admin Login'}
+            </Link>
           </p>
           <p className="text-dark-600 text-xs flex items-center gap-1.5">
             <span className={isNepali ? 'font-nepali' : ''}>{t('footer.madeWith')}</span>

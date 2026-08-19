@@ -4,7 +4,8 @@ import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useTranslations } from 'next-intl';
 import { motion, useScroll, useTransform } from 'framer-motion';
-import { ArrowDown, ChevronRight, Star, Zap } from 'lucide-react';
+import { ArrowDown, ChevronRight, Star, Zap, Users } from 'lucide-react';
+import ConnectModal from '@/components/ui/ConnectModal';
 
 // Floating particle
 const Particle = ({ style }) => (
@@ -53,12 +54,15 @@ function Counter({ end, suffix = '', duration = 2 }) {
     return () => clearInterval(timer);
   }, [started, end, duration]);
 
-  return <span ref={ref}>{count.toLocaleString()}{suffix}</span>;
+  return <span>{count.toLocaleString()}{suffix}</span>;
 }
 
 export default function HeroSection({ locale }) {
+  const [isConnectOpen, setIsConnectOpen] = useState(false);
   const t = useTranslations('hero');
   const tStats = useTranslations('stats');
+  const tConnect = useTranslations('connect');
+
   const base = `/${locale}`;
   const isNepali = locale === 'ne';
   const heroRef = useRef(null);
@@ -220,9 +224,18 @@ export default function HeroSection({ locale }) {
           {/* CTAs */}
           <motion.div variants={itemVariants} className="flex flex-col sm:flex-row gap-4 justify-center mb-16">
             <motion.div whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}>
+              <button
+                onClick={() => setIsConnectOpen(true)}
+                className="btn-primary text-sm uppercase tracking-widest px-8 py-3.5 shadow-red-glow flex items-center gap-2 border border-primary-500/20"
+              >
+                <Users size={15} />
+                <span className={isNepali ? 'font-nepali' : ''}>{tConnect('cta')}</span>
+              </button>
+            </motion.div>
+            <motion.div whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}>
               <Link
                 href={`${base}/campaigns`}
-                className="btn-primary text-sm uppercase tracking-widest px-8 py-3.5 shadow-red-glow"
+                className="btn-outline text-sm uppercase tracking-widest px-8 py-3.5"
               >
                 <Zap size={15} />
                 <span className={isNepali ? 'font-nepali' : ''}>{t('cta1')}</span>
@@ -279,6 +292,10 @@ export default function HeroSection({ locale }) {
 
       {/* Bottom fade */}
       <div className="absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-t from-dark-950 to-transparent pointer-events-none" />
+
+      {/* Connect Modal Component */}
+      <ConnectModal isOpen={isConnectOpen} onClose={() => setIsConnectOpen(false)} />
     </section>
   );
 }
+

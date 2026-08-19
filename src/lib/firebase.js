@@ -1,10 +1,5 @@
-// Firebase configuration
-// Replace with your actual Firebase project config
-// Get these values from Firebase Console > Project Settings > Your apps
-
-import { initializeApp, getApps } from 'firebase/app';
-import { getFirestore } from 'firebase/firestore';
-import { getStorage } from 'firebase/storage';
+import { initializeApp, getApps, getApp } from 'firebase/app';
+import { getAuth, GoogleAuthProvider } from 'firebase/auth';
 
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
@@ -16,55 +11,12 @@ const firebaseConfig = {
 };
 
 // Initialize Firebase (prevent duplicate initialization)
-const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0];
+const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
 
-export const db = getFirestore(app);
-export const storage = getStorage(app);
+export const auth = getAuth(app);
+export const googleProvider = new GoogleAuthProvider();
 
-// =============================================
-// COLLECTIONS
-// =============================================
-export const COLLECTIONS = {
-  VOLUNTEERS: 'volunteers',
-  YOUTH_IDEAS: 'youth_ideas',
-  CONTACTS: 'contacts',
-};
-
-// =============================================
-// HELPER FUNCTIONS
-// =============================================
-
-/**
- * Save volunteer registration to Firestore
- */
-export async function saveVolunteer(data) {
-  const { addDoc, collection, serverTimestamp } = await import('firebase/firestore');
-  return addDoc(collection(db, COLLECTIONS.VOLUNTEERS), {
-    ...data,
-    createdAt: serverTimestamp(),
-    status: 'pending',
-  });
-}
-
-/**
- * Save youth idea submission
- */
-export async function saveYouthIdea(data) {
-  const { addDoc, collection, serverTimestamp } = await import('firebase/firestore');
-  return addDoc(collection(db, COLLECTIONS.YOUTH_IDEAS), {
-    ...data,
-    createdAt: serverTimestamp(),
-    status: 'submitted',
-  });
-}
-
-/**
- * Save contact form submission
- */
-export async function saveContact(data) {
-  const { addDoc, collection, serverTimestamp } = await import('firebase/firestore');
-  return addDoc(collection(db, COLLECTIONS.CONTACTS), {
-    ...data,
-    createdAt: serverTimestamp(),
-  });
-}
+// Configure Google provider options
+googleProvider.setCustomParameters({
+  prompt: 'select_account',
+});
