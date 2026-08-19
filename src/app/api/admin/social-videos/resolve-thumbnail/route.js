@@ -66,7 +66,7 @@ export async function POST(req) {
     console.log(`[Thumbnail Resolver] Platform: ${platform}`);
     console.log(`[Thumbnail Resolver] Resolving metadata...`);
 
-    const preview = await getPreviewMetadata(normalizedUrl, platform);
+    const { preview, sourcesAttempted } = await getPreviewMetadata(normalizedUrl, platform);
     
     if (preview.thumbnailUrl) {
       console.log(`[Thumbnail Resolver] Thumbnail: FOUND`);
@@ -89,7 +89,12 @@ export async function POST(req) {
         success: false,
         platform: preview.platform,
         thumbnailUrl: null,
-        error: errorMsg
+        error: errorMsg,
+        debug: {
+          httpStatus: 200,
+          platformDetected: platform,
+          sourcesAttempted: sourcesAttempted
+        }
       }, { status: 200 });
     }
   } catch (error) {
@@ -212,7 +217,39 @@ async function getPreviewMetadata(cleanUrl, platform) {
     } catch (e) {}
   }
 
-  // 4. HTML Open Graph / Twitter Card parsing
+  // 4. Facebook plugins poster player fallback (runs first for Facebook to bypass 400 Bad Request / Redirect blocks)
+  if (platform === 'facebook') {
+    try {
+      const fbPluginUrl = `https://www.facebook.com/plugins/video.php?href=${encodeURIComponent(cleanUrl)}`;
+      console.log('[Resolve] Attempting Facebook plugin page poster fallback:', fbPluginUrl);
+      const res = await fetch(fbPluginUrl, {
+        headers: { 'User-Agent': BROWSER_UA },
+        cache: 'no-store'
+      });
+      if (res.ok) {
+        const html = await res.text();
+        const regex = /https?:\\?\/\\?\/[^\s"']+\.fbcdn\.net\\?\/[^\s"']+\.(?:jpg|png|jpeg)[^\s"']*/gi;
+        const matches = html.match(regex) || [];
+        const urls = matches.map(u => u.replace(/\\/g, '').replace(/&amp;/g, '&'));
+        const uniqueUrls = [...new Set(urls)];
+        
+        const coverCandidates = uniqueUrls.filter(url => {
+          const lowerUrl = url.toLowerCase();
+          return !lowerUrl.includes('/t39.') && !lowerUrl.includes('s40x40') && !lowerUrl.includes('s50x50') && !lowerUrl.includes('s100x100');
+        });
+
+        if (coverCandidates.length > 0) {
+          sources.push({ url: coverCandidates[0], source: 'facebook:plugin' });
+        } else if (uniqueUrls.length > 0) {
+          sources.push({ url: uniqueUrls[0], source: 'facebook:plugin' });
+        }
+      }
+    } catch (e) {
+      console.error('[Resolve] Facebook plugin extraction error:', e.message);
+    }
+  }
+
+  // 5. HTML Open Graph / Twitter Card parsing
   const userAgentsToTry = [BROWSER_UA, CRAWLER_UA];
   for (const ua of userAgentsToTry) {
     try {
@@ -249,7 +286,7 @@ async function getPreviewMetadata(cleanUrl, platform) {
     }
   }
 
-  // 5. Validate sources sequentially
+  // 6. Validate sources sequentially
   let resolvedUrl = '';
   let resolvedSource = 'none';
 
@@ -264,7 +301,7 @@ async function getPreviewMetadata(cleanUrl, platform) {
     }
   }
 
-  // 6. Cloudinary persistent cache upload for transient external images
+  // 7. Cloudinary persistent cache upload for transient external images
   if (resolvedUrl && platform !== 'youtube' && platform !== 'vimeo' && !resolvedUrl.includes('cloudinary.com')) {
     try {
       console.log('[Resolve] Downloading and caching transient cover image:', resolvedUrl);
@@ -292,9 +329,12 @@ async function getPreviewMetadata(cleanUrl, platform) {
   }
 
   return {
-    platform,
-    thumbnailUrl: resolvedUrl || null,
-    source: resolvedSource
+    sourcesAttempted: sources.map(s => ({ url: s.url, source: s.source })),
+    preview: {
+      platform,
+      thumbnailUrl: resolvedUrl || null,
+      source: resolvedSource
+    }
   };
 }
 
