@@ -59,6 +59,7 @@ export default function AdminPage({ params: { locale } }) {
   const [formDescNe, setFormDescNe] = useState('');
   const [formVideoUrl, setFormVideoUrl] = useState('');
   const [formCoverUrl, setFormCoverUrl] = useState('');
+  const [formCoverSource, setFormCoverSource] = useState('auto'); // auto, custom
   const [formPlatform, setFormPlatform] = useState('other');
   const [formStatus, setFormStatus] = useState('draft'); // draft, published
 
@@ -224,6 +225,7 @@ export default function AdminPage({ params: { locale } }) {
     setFormDescNe('');
     setFormVideoUrl('');
     setFormCoverUrl('');
+    setFormCoverSource('auto');
     setFormPlatform('other');
     setFormStatus('draft');
     setVideoModalOpen(true);
@@ -237,6 +239,7 @@ export default function AdminPage({ params: { locale } }) {
     setFormDescNe(video.description_ne || '');
     setFormVideoUrl(video.video_url || '');
     setFormCoverUrl(video.cover_image_url || '');
+    setFormCoverSource(video.cover_source || 'auto');
     setFormPlatform(video.platform || 'other');
     setFormStatus(video.status || 'draft');
     setVideoModalOpen(true);
@@ -259,7 +262,12 @@ export default function AdminPage({ params: { locale } }) {
         const result = await res.json();
         if (result.success && result.preview) {
           const { title, description, coverImageUrl, platform } = result.preview;
-          if (coverImageUrl) setFormCoverUrl(coverImageUrl);
+          if (coverImageUrl) {
+            setFormCoverUrl(coverImageUrl);
+            setFormCoverSource('auto');
+          } else {
+            setFormCoverUrl('');
+          }
           if (platform) setFormPlatform(platform);
           if (!formTitleEn && title) setFormTitleEn(title);
           if (!formDescEn && description) setFormDescEn(description);
@@ -298,6 +306,7 @@ export default function AdminPage({ params: { locale } }) {
         const result = await res.json();
         if (result.success && result.url) {
           setFormCoverUrl(result.url);
+          setFormCoverSource('custom');
         }
       } else {
         alert('Failed to upload image');
@@ -332,6 +341,7 @@ export default function AdminPage({ params: { locale } }) {
           description_ne: formDescNe,
           video_url: formVideoUrl,
           cover_image_url: formCoverUrl,
+          cover_source: formCoverSource,
           platform: formPlatform,
           status: formStatus
         })
@@ -350,6 +360,109 @@ export default function AdminPage({ params: { locale } }) {
     } finally {
       setSaveLoading(false);
     }
+  };
+
+  const handleRefreshCover = async (video) => {
+    setActionLoadingId(video.id);
+    try {
+      const res = await fetch('/api/admin/social-videos/preview', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ url: video.video_url })
+      });
+
+      if (res.ok) {
+        const result = await res.json();
+        if (result.success && result.preview) {
+          const { coverImageUrl, platform } = result.preview;
+          
+          const updateRes = await fetch('/api/admin/social-videos', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify({
+              id: video.id,
+              cover_image_url: coverImageUrl || '',
+              cover_source: 'auto',
+              platform: platform || video.platform
+            })
+          });
+
+          if (updateRes.ok) {
+            await fetchData();
+            alert(isNepali ? 'भिडियो कभर सफलतापूर्वक रिफ्रेस भयो।' : 'Video cover successfully refreshed.');
+          } else {
+            alert(isNepali ? 'कभर सुरक्षित गर्न सकिएन।' : 'Failed to save updated cover.');
+          }
+        } else {
+          alert(isNepali ? 'कभर पत्ता लाग्न सकेन।' : 'Unable to auto-detect cover image.');
+        }
+      } else {
+        alert(isNepali ? 'कभर रिफ्रेस गर्न असफल भयो।' : 'Cover refresh failed.');
+      }
+    } catch (err) {
+      console.error(err);
+      alert('Error refreshing cover');
+    } finally {
+      setActionLoadingId(null);
+    }
+  };
+
+  const handleRefreshAllCovers = async () => {
+    if (!data.social_videos || data.social_videos.length === 0) return;
+    if (!confirm(isNepali ? 'के तपाईं सबै भिडियो कभरहरू रिफ्रेस गर्न चाहनुहुन्छ?' : 'Are you sure you want to refresh all video covers?')) return;
+    
+    setDataLoading(true);
+    let successCount = 0;
+    
+    for (const video of data.social_videos) {
+      try {
+        const res = await fetch('/api/admin/social-videos/preview', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({ url: video.video_url })
+        });
+        
+        if (res.ok) {
+          const result = await res.json();
+          if (result.success && result.preview) {
+            const { coverImageUrl, platform } = result.preview;
+            
+            await fetch('/api/admin/social-videos', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+              },
+              body: JSON.stringify({
+                id: video.id,
+                cover_image_url: coverImageUrl || '',
+                cover_source: 'auto',
+                platform: platform || video.platform
+              })
+            });
+            successCount++;
+          }
+        }
+      } catch (err) {
+        console.error(`Error refreshing cover for video ${video.id}:`, err);
+      }
+    }
+    
+    await fetchData();
+    setDataLoading(false);
+    alert(isNepali 
+      ? `सफलतापूर्वक ${successCount} कभर(हरू) रिफ्रेस भयो।` 
+      : `Successfully refreshed ${successCount} cover(s).`
+    );
   };
 
   // Translate Status helper
@@ -863,13 +976,22 @@ export default function AdminPage({ params: { locale } }) {
                   <h3 className="text-white text-xl font-bold font-display uppercase tracking-wider">
                     {t('socialVideos')}
                   </h3>
-                  <button
-                    onClick={handleOpenAddVideo}
-                    className="btn-primary flex items-center gap-1.5 px-4 py-2 text-xs uppercase tracking-widest shadow-red-glow font-bold"
-                  >
-                    <Plus size={14} />
-                    <span>{t('addVideo')}</span>
-                  </button>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={handleRefreshAllCovers}
+                      className="btn-outline border-primary-900/60 hover:bg-primary-900/10 text-primary-400 text-xs px-4 py-2 uppercase tracking-widest font-bold flex items-center gap-1.5"
+                    >
+                      <RefreshCw size={12} />
+                      <span>{isNepali ? 'सबै कभर रिफ्रेस' : 'Refresh All Covers'}</span>
+                    </button>
+                    <button
+                      onClick={handleOpenAddVideo}
+                      className="btn-primary flex items-center gap-1.5 px-4 py-2 text-xs uppercase tracking-widest shadow-red-glow font-bold"
+                    >
+                      <Plus size={14} />
+                      <span>{t('addVideo')}</span>
+                    </button>
+                  </div>
                 </div>
 
                 <div className="overflow-x-auto">
@@ -944,6 +1066,14 @@ export default function AdminPage({ params: { locale } }) {
                                       <Clock size={14} />
                                     </button>
                                   )}
+                                  <button
+                                    onClick={() => handleRefreshCover(row)}
+                                    disabled={actionLoadingId !== null}
+                                    className="p-1 border border-primary-900/50 hover:bg-primary-900/20 text-primary-400 rounded-sm transition-all"
+                                    title={isNepali ? 'कभर रिफ्रेस गर्नुहोस्' : 'Refresh Cover'}
+                                  >
+                                    <RefreshCw size={14} className={actionLoadingId === row.id ? 'animate-spin' : ''} />
+                                  </button>
                                   <button
                                     onClick={() => handleOpenEditVideo(row)}
                                     disabled={actionLoadingId === row.id}

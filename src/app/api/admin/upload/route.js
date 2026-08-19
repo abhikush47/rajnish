@@ -1,10 +1,17 @@
 import { NextResponse } from 'next/server';
 import { verifyAdminToken } from '@/lib/admin-auth';
-import fs from 'fs';
-import path from 'path';
+import { v2 as cloudinary } from 'cloudinary';
+
+// Configure Cloudinary
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET
+});
 
 export async function POST(req) {
   try {
+    // 1. Verify admin session
     try {
       await verifyAdminToken(req);
     } catch (authError) {
@@ -23,25 +30,27 @@ export async function POST(req) {
       return NextResponse.json({ success: false, error: 'No file provided' }, { status: 400 });
     }
 
+    // Convert file to Buffer
     const bytes = await file.arrayBuffer();
     const buffer = Buffer.from(bytes);
 
-    // Save to public/uploads
-    const uploadsDir = path.join(process.cwd(), 'public', 'uploads');
-    if (!fs.existsSync(uploadsDir)) {
-      fs.mkdirSync(uploadsDir, { recursive: true });
-    }
+    // Convert buffer to base64 Data URI for Cloudinary upload
+    const base64Data = buffer.toString('base64');
+    const fileUri = `data:${file.type || 'image/jpeg'};base64,${base64Data}`;
 
-    const fileExt = path.extname(file.name) || '.jpg';
-    const fileName = `${Date.now()}-${Math.random().toString(36).substr(2, 9)}${fileExt}`;
-    const filePath = path.join(uploadsDir, fileName);
+    // Upload to Cloudinary
+    console.log('[Upload] Uploading manual cover image to Cloudinary...');
+    const uploadRes = await cloudinary.uploader.upload(fileUri, {
+      folder: 'social_covers',
+      resource_type: 'image'
+    });
 
-    await fs.promises.writeFile(filePath, buffer);
+    const fileUrl = uploadRes.secure_url;
+    console.log('[Upload] Cloudinary upload successful:', fileUrl);
 
-    const fileUrl = `/uploads/${fileName}`;
     return NextResponse.json({ success: true, url: fileUrl });
   } catch (error) {
-    console.error('Error handling manual upload:', error);
+    console.error('Error handling manual Cloudinary upload:', error);
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });
   }
 }

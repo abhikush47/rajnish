@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { revalidatePath } from 'next/cache';
 import { verifyAdminToken } from '@/lib/admin-auth';
 import { deleteRecord } from '@/lib/db';
 
@@ -23,6 +24,13 @@ export async function POST(req) {
     }
 
     await deleteRecord(type, id);
+
+    // Revalidate public routes when a video is deleted
+    if (type === 'social_video') {
+      revalidatePath('/en/social-work');
+      revalidatePath('/ne/social-work');
+    }
+
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error('Error deleting record:', error);

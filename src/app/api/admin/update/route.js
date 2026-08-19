@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { revalidatePath } from 'next/cache';
 import { verifyAdminToken } from '@/lib/admin-auth';
 import { 
   updateConnectRequestStatus, 
@@ -36,6 +37,10 @@ export async function POST(req) {
       updatedRecord = await updateFeedbackStatus(id, status);
     } else if (type === 'social_video') {
       updatedRecord = await updateSocialVideo(id, { status });
+      
+      // Revalidate public routes when video status changes
+      revalidatePath('/en/social-work');
+      revalidatePath('/ne/social-work');
     } else {
       return NextResponse.json({ success: false, error: 'Invalid record type' }, { status: 400 });
     }

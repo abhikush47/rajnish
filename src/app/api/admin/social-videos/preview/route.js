@@ -3,6 +3,7 @@ import { verifyAdminToken } from '@/lib/admin-auth';
 
 export async function POST(req) {
   try {
+    // 1. Verify admin session
     try {
       await verifyAdminToken(req);
     } catch (authError) {
@@ -24,6 +25,29 @@ export async function POST(req) {
   } catch (error) {
     console.error('Error generating video preview:', error);
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+  }
+}
+
+async function validateImage(url) {
+  if (!url) return false;
+  try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 3000);
+    const res = await fetch(url, { method: 'HEAD', signal: controller.signal });
+    clearTimeout(timeoutId);
+    if (res.ok) return true;
+  } catch (e) {
+    // Fallback to GET check
+  }
+
+  try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 3000);
+    const res = await fetch(url, { method: 'GET', signal: controller.signal });
+    clearTimeout(timeoutId);
+    return res.ok;
+  } catch (e) {
+    return false;
   }
 }
 
@@ -52,8 +76,18 @@ async function getPreviewMetadata(url) {
     if (platform === 'youtube') {
       const videoId = extractYouTubeId(cleanUrl);
       if (videoId) {
-        coverImageUrl = `https://img.youtube.com/vi/${videoId}/maxresdefault.jpg`;
-        // Try fetching oEmbed for title/desc fallback
+        // Find best quality image that is valid
+        const qualities = ['maxresdefault', 'sddefault', 'hqdefault', 'default'];
+        for (const q of qualities) {
+          const testUrl = `https://img.youtube.com/vi/${videoId}/${q}.jpg`;
+          const isValid = await validateImage(testUrl);
+          if (isValid) {
+            coverImageUrl = testUrl;
+            break;
+          }
+        }
+        
+        // Fetch oEmbed for title
         const oembedUrl = `https://www.youtube.com/oembed?url=${encodeURIComponent(cleanUrl)}&format=json`;
         const res = await fetch(oembedUrl);
         if (res.ok) {
@@ -110,7 +144,7 @@ async function getPreviewMetadata(url) {
 
         if (!description) {
           const descMatch = html.match(/<meta[^>]*property=["']og:description["'][^>]*content=["']([^"']+)["']/i) ||
-                            html.match(/<meta[^>]*content=["']([^"']+)["'][^>]*property=["']og:description["']/i);
+                             html.match(/<meta[^>]*content=["']([^"']+)["'][^>]*property=["']og:description["']/i);
           if (descMatch) description = decodeHtmlEntities(descMatch[1]);
         }
 
@@ -123,6 +157,15 @@ async function getPreviewMetadata(url) {
       }
     } catch (err) {
       console.error('HTML parse / OG metadata fetch failed:', err);
+    }
+  }
+
+  // 3. Final validation of resolved cover URL (if any was extracted from non-youtube)
+  if (coverImageUrl && platform !== 'youtube') {
+    const isImageValid = await validateImage(coverImageUrl);
+    if (!isImageValid) {
+      console.warn('[Preview] Resolved cover image URL failed validation:', coverImageUrl);
+      coverImageUrl = '';
     }
   }
 

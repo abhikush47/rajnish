@@ -56,7 +56,7 @@ export default function SocialWorkPage({ params: { locale } }) {
   useEffect(() => {
     async function fetchVideos() {
       try {
-        const res = await fetch('/api/social-videos');
+        const res = await fetch('/api/social-videos', { cache: 'no-store' });
         if (res.ok) {
           const data = await res.json();
           setVideos(data);
