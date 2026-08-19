@@ -249,10 +249,10 @@ export default function AdminPage({ params: { locale } }) {
   };
 
   const handleAutoDetectCover = async () => {
-    if (!formVideoUrl) return alert(isNepali ? 'कृपया पहिले भिडियो लिङ्क राख्नुहोस्' : 'Please enter a video URL first');
+    if (!formVideoUrl) return;
     setPreviewLoading(true);
     try {
-      const res = await fetch('/api/admin/social-videos/preview', {
+      const res = await fetch('/api/admin/social-videos/resolve-thumbnail', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -263,36 +263,46 @@ export default function AdminPage({ params: { locale } }) {
 
       if (res.ok) {
         const result = await res.json();
-        if (result.success && result.preview) {
-          const { title, description, coverImageUrl, platform, thumbnailStatus } = result.preview;
-          if (coverImageUrl) {
-            setFormCoverUrl(coverImageUrl);
-            setFormCoverSource('auto');
-            setFormThumbnailStatus(thumbnailStatus || 'auto');
-          } else {
-            setFormCoverUrl('');
-            setFormThumbnailStatus('failed');
-            alert(isNepali ? 'अटो कभर पत्ता लाग्न सकेन। कभर म्यानुअल्ली अपलोड गर्नुहोस्।' : 'Unable to auto-detect a cover for this video. Please upload a cover image manually.');
-          }
-          if (platform) setFormPlatform(platform);
-          if (!formTitleEn && title) setFormTitleEn(title);
-          if (!formDescEn && description) setFormDescEn(description);
+        if (result.success && result.thumbnailUrl) {
+          setFormCoverUrl(result.thumbnailUrl);
+          setFormCoverSource(result.source || 'auto');
+          setFormThumbnailStatus('auto');
+          if (result.platform) setFormPlatform(result.platform);
         } else {
+          setFormCoverUrl('');
           setFormThumbnailStatus('failed');
-          alert(isNepali ? 'अटो कभर पत्ता लाग्न सकेन। कभर म्यानुअल्ली अपलोड गर्नुहोस्।' : 'Unable to auto-detect metadata. Please upload a cover image manually.');
         }
       } else {
+        setFormCoverUrl('');
         setFormThumbnailStatus('failed');
-        alert(isNepali ? 'कभर पत्ता लगाउने कार्य असफल भयो।' : 'Cover auto-detection failed.');
       }
     } catch (err) {
       console.error(err);
+      setFormCoverUrl('');
       setFormThumbnailStatus('failed');
-      alert('Error during auto-detection');
     } finally {
       setPreviewLoading(false);
     }
   };
+
+  // Auto-detect cover image on URL paste or edit
+  useEffect(() => {
+    if (!formVideoUrl) return;
+    
+    // Simple URL sanity check to avoid triggering on incomplete keystrokes
+    const isUrlValid = /^(https?:\/\/)?([\da-z.-]+)\.([a-z.]{2,6})([/\w .-]*)*\/?/i.test(formVideoUrl);
+    if (!isUrlValid) return;
+
+    // Debounce to prevent multiple hits during active manual typing
+    const delayDebounceId = setTimeout(() => {
+      // If editing an existing video, skip if the url is still the original saved one
+      if (editingVideo && editingVideo.video_url === formVideoUrl) return;
+      
+      handleAutoDetectCover();
+    }, 1000);
+
+    return () => clearTimeout(delayDebounceId);
+  }, [formVideoUrl]);
 
   const handleCustomCoverUpload = async (e) => {
     const file = e.target.files[0];
@@ -376,7 +386,7 @@ export default function AdminPage({ params: { locale } }) {
   const handleRefreshCover = async (video) => {
     setActionLoadingId(video.id);
     try {
-      const res = await fetch('/api/admin/social-videos/preview', {
+      const res = await fetch('/api/admin/social-videos/resolve-thumbnail', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -387,8 +397,8 @@ export default function AdminPage({ params: { locale } }) {
 
       if (res.ok) {
         const result = await res.json();
-        if (result.success && result.preview) {
-          const { coverImageUrl, platform, thumbnailStatus } = result.preview;
+        if (result.success && result.thumbnailUrl) {
+          const { thumbnailUrl, platform, source } = result;
           
           const updateRes = await fetch('/api/admin/social-videos', {
             method: 'POST',
@@ -398,9 +408,9 @@ export default function AdminPage({ params: { locale } }) {
             },
             body: JSON.stringify({
               id: video.id,
-              cover_image_url: coverImageUrl || '',
-              cover_source: 'auto',
-              thumbnailStatus: thumbnailStatus || (coverImageUrl ? 'auto' : 'failed'),
+              cover_image_url: thumbnailUrl || '',
+              cover_source: source || 'auto',
+              thumbnailStatus: 'auto',
               platform: platform || video.platform
             })
           });
@@ -412,7 +422,7 @@ export default function AdminPage({ params: { locale } }) {
             alert(isNepali ? 'कभर सुरक्षित गर्न सकिएन।' : 'Failed to save updated cover.');
           }
         } else {
-          // Update db with failed status if no preview was resolved
+          // Update db with failed status if no cover was resolved
           await fetch('/api/admin/social-videos', {
             method: 'POST',
             headers: {
@@ -449,7 +459,7 @@ export default function AdminPage({ params: { locale } }) {
     
     for (const video of data.social_videos) {
       try {
-        const res = await fetch('/api/admin/social-videos/preview', {
+        const res = await fetch('/api/admin/social-videos/resolve-thumbnail', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -460,8 +470,8 @@ export default function AdminPage({ params: { locale } }) {
         
         if (res.ok) {
           const result = await res.json();
-          if (result.success && result.preview) {
-            const { coverImageUrl, platform, thumbnailStatus } = result.preview;
+          if (result.success && result.thumbnailUrl) {
+            const { thumbnailUrl, platform, source } = result;
             
             await fetch('/api/admin/social-videos', {
               method: 'POST',
@@ -471,9 +481,9 @@ export default function AdminPage({ params: { locale } }) {
               },
               body: JSON.stringify({
                 id: video.id,
-                cover_image_url: coverImageUrl || '',
-                cover_source: 'auto',
-                thumbnailStatus: thumbnailStatus || (coverImageUrl ? 'auto' : 'failed'),
+                cover_image_url: thumbnailUrl || '',
+                cover_source: source || 'auto',
+                thumbnailStatus: 'auto',
                 platform: platform || video.platform
               })
             });
