@@ -60,6 +60,7 @@ export default function AdminPage({ params: { locale } }) {
   const [formVideoUrl, setFormVideoUrl] = useState('');
   const [formCoverUrl, setFormCoverUrl] = useState('');
   const [formCoverSource, setFormCoverSource] = useState('auto'); // auto, custom
+  const [formThumbnailStatus, setFormThumbnailStatus] = useState('none'); // auto, custom, none, failed
   const [formPlatform, setFormPlatform] = useState('other');
   const [formStatus, setFormStatus] = useState('draft'); // draft, published
 
@@ -226,6 +227,7 @@ export default function AdminPage({ params: { locale } }) {
     setFormVideoUrl('');
     setFormCoverUrl('');
     setFormCoverSource('auto');
+    setFormThumbnailStatus('none');
     setFormPlatform('other');
     setFormStatus('draft');
     setVideoModalOpen(true);
@@ -240,6 +242,7 @@ export default function AdminPage({ params: { locale } }) {
     setFormVideoUrl(video.video_url || '');
     setFormCoverUrl(video.cover_image_url || '');
     setFormCoverSource(video.cover_source || 'auto');
+    setFormThumbnailStatus(video.thumbnailStatus || 'none');
     setFormPlatform(video.platform || 'other');
     setFormStatus(video.status || 'draft');
     setVideoModalOpen(true);
@@ -261,24 +264,30 @@ export default function AdminPage({ params: { locale } }) {
       if (res.ok) {
         const result = await res.json();
         if (result.success && result.preview) {
-          const { title, description, coverImageUrl, platform } = result.preview;
+          const { title, description, coverImageUrl, platform, thumbnailStatus } = result.preview;
           if (coverImageUrl) {
             setFormCoverUrl(coverImageUrl);
             setFormCoverSource('auto');
+            setFormThumbnailStatus(thumbnailStatus || 'auto');
           } else {
             setFormCoverUrl('');
+            setFormThumbnailStatus('failed');
+            alert(isNepali ? 'अटो कभर पत्ता लाग्न सकेन। कभर म्यानुअल्ली अपलोड गर्नुहोस्।' : 'Unable to auto-detect a cover for this video. Please upload a cover image manually.');
           }
           if (platform) setFormPlatform(platform);
           if (!formTitleEn && title) setFormTitleEn(title);
           if (!formDescEn && description) setFormDescEn(description);
         } else {
+          setFormThumbnailStatus('failed');
           alert(isNepali ? 'अटो कभर पत्ता लाग्न सकेन। कभर म्यानुअल्ली अपलोड गर्नुहोस्।' : 'Unable to auto-detect metadata. Please upload a cover image manually.');
         }
       } else {
+        setFormThumbnailStatus('failed');
         alert(isNepali ? 'कभर पत्ता लगाउने कार्य असफल भयो।' : 'Cover auto-detection failed.');
       }
     } catch (err) {
       console.error(err);
+      setFormThumbnailStatus('failed');
       alert('Error during auto-detection');
     } finally {
       setPreviewLoading(false);
@@ -307,6 +316,7 @@ export default function AdminPage({ params: { locale } }) {
         if (result.success && result.url) {
           setFormCoverUrl(result.url);
           setFormCoverSource('custom');
+          setFormThumbnailStatus('custom');
         }
       } else {
         alert('Failed to upload image');
@@ -342,6 +352,7 @@ export default function AdminPage({ params: { locale } }) {
           video_url: formVideoUrl,
           cover_image_url: formCoverUrl,
           cover_source: formCoverSource,
+          thumbnailStatus: formThumbnailStatus,
           platform: formPlatform,
           status: formStatus
         })
@@ -377,7 +388,7 @@ export default function AdminPage({ params: { locale } }) {
       if (res.ok) {
         const result = await res.json();
         if (result.success && result.preview) {
-          const { coverImageUrl, platform } = result.preview;
+          const { coverImageUrl, platform, thumbnailStatus } = result.preview;
           
           const updateRes = await fetch('/api/admin/social-videos', {
             method: 'POST',
@@ -389,6 +400,7 @@ export default function AdminPage({ params: { locale } }) {
               id: video.id,
               cover_image_url: coverImageUrl || '',
               cover_source: 'auto',
+              thumbnailStatus: thumbnailStatus || (coverImageUrl ? 'auto' : 'failed'),
               platform: platform || video.platform
             })
           });
@@ -400,6 +412,21 @@ export default function AdminPage({ params: { locale } }) {
             alert(isNepali ? 'कभर सुरक्षित गर्न सकिएन।' : 'Failed to save updated cover.');
           }
         } else {
+          // Update db with failed status if no preview was resolved
+          await fetch('/api/admin/social-videos', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify({
+              id: video.id,
+              cover_image_url: '',
+              cover_source: 'auto',
+              thumbnailStatus: 'failed'
+            })
+          });
+          await fetchData();
           alert(isNepali ? 'कभर पत्ता लाग्न सकेन।' : 'Unable to auto-detect cover image.');
         }
       } else {
@@ -434,7 +461,7 @@ export default function AdminPage({ params: { locale } }) {
         if (res.ok) {
           const result = await res.json();
           if (result.success && result.preview) {
-            const { coverImageUrl, platform } = result.preview;
+            const { coverImageUrl, platform, thumbnailStatus } = result.preview;
             
             await fetch('/api/admin/social-videos', {
               method: 'POST',
@@ -446,10 +473,25 @@ export default function AdminPage({ params: { locale } }) {
                 id: video.id,
                 cover_image_url: coverImageUrl || '',
                 cover_source: 'auto',
+                thumbnailStatus: thumbnailStatus || (coverImageUrl ? 'auto' : 'failed'),
                 platform: platform || video.platform
               })
             });
             successCount++;
+          } else {
+            await fetch('/api/admin/social-videos', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+              },
+              body: JSON.stringify({
+                id: video.id,
+                cover_image_url: '',
+                cover_source: 'auto',
+                thumbnailStatus: 'failed'
+              })
+            });
           }
         }
       } catch (err) {
@@ -1019,15 +1061,27 @@ export default function AdminPage({ params: { locale } }) {
                           return (
                             <tr key={row.id} className="hover:bg-primary-900/5 transition-colors">
                               <td className="py-3 px-4">
-                                <div className="w-16 aspect-video bg-dark-950 border border-primary-950 rounded-sm overflow-hidden flex items-center justify-center">
-                                  {row.cover_image_url ? (
-                                    <img
-                                      src={row.cover_image_url}
-                                      alt={title}
-                                      className="w-full h-full object-cover"
-                                    />
-                                  ) : (
-                                    <Play size={14} className="text-dark-600" />
+                                <div className="space-y-1">
+                                  <div className="w-20 aspect-video bg-dark-950 border border-primary-950 rounded-sm overflow-hidden flex items-center justify-center relative">
+                                    {row.cover_image_url ? (
+                                      <img
+                                        src={row.cover_image_url}
+                                        alt={title}
+                                        className="w-full h-full object-cover"
+                                      />
+                                    ) : (
+                                      <div className="flex flex-col items-center justify-center text-[10px] text-red-500 font-bold uppercase p-1 text-center bg-red-950/20 w-full h-full">
+                                        <span>No cover</span>
+                                      </div>
+                                    )}
+                                  </div>
+                                  {(!row.cover_image_url || row.thumbnailStatus === 'failed') && (
+                                    <button
+                                      onClick={() => handleOpenEditVideo(row)}
+                                      className="text-[9px] uppercase font-bold tracking-wider text-primary-400 hover:text-primary-300 block hover:underline"
+                                    >
+                                      [Upload Cover]
+                                    </button>
                                   )}
                                 </div>
                               </td>
@@ -1254,27 +1308,78 @@ export default function AdminPage({ params: { locale } }) {
                     <button
                       type="button"
                       onClick={handleAutoDetectCover}
-                      disabled={previewLoading}
+                      disabled={previewLoading || uploadLoading}
                       className="px-3 py-1.5 border border-primary-900 hover:border-primary-700 bg-primary-900/10 text-primary-400 hover:text-white rounded-sm text-[10px] uppercase font-bold tracking-wider transition-all flex items-center gap-1"
                     >
                       {previewLoading ? <RefreshCw size={10} className="animate-spin" /> : null}
-                      <span>{t('autoDetectCover')}</span>
+                      <span>{isNepali ? 'कभर तान्नुहोस्' : 'Detect Cover'}</span>
                     </button>
                     <label className="px-3 py-1.5 border border-primary-900 hover:border-primary-700 bg-primary-900/10 text-primary-400 hover:text-white rounded-sm text-[10px] uppercase font-bold tracking-wider transition-all cursor-pointer flex items-center gap-1">
                       {uploadLoading ? <RefreshCw size={10} className="animate-spin" /> : null}
-                      <span>{t('uploadCover')}</span>
+                      <span>{isNepali ? 'अपलोड गर्नुहोस्' : 'Upload Cover'}</span>
                       <input
                         type="file"
                         accept="image/*"
                         onChange={handleCustomCoverUpload}
+                        disabled={previewLoading || uploadLoading}
                         className="hidden"
                       />
                     </label>
                   </div>
                 </div>
 
+                {/* Status Indicator Messages */}
+                <div className="text-xs">
+                  {previewLoading && (
+                    <p className="text-yellow-500 animate-pulse font-medium">
+                      ⏳ {isNepali ? 'थम्बनेल पत्ता लगाउँदै...' : 'Detecting thumbnail...'}
+                    </p>
+                  )}
+                  {uploadLoading && (
+                    <p className="text-yellow-500 animate-pulse font-medium">
+                      ⏳ {isNepali ? 'कभर अपलोड हुँदै...' : 'Uploading cover...'}
+                    </p>
+                  )}
+                  {!previewLoading && !uploadLoading && (
+                    <>
+                      {formThumbnailStatus === 'auto' && formCoverUrl && (
+                        <div className="space-y-1">
+                          <p className="text-green-500 font-semibold">
+                            ✓ {isNepali ? 'थम्बनेल पत्ता लाग्यो' : 'Thumbnail detected'}
+                          </p>
+                          <span className="text-[10px] text-dark-400 block">
+                            {isNepali ? 'पत्ता लागेको थम्बनेल प्रयोग हुँदैछ' : 'Using Detected Cover'}
+                          </span>
+                        </div>
+                      )}
+                      {formThumbnailStatus === 'custom' && formCoverUrl && (
+                        <div className="space-y-1">
+                          <p className="text-green-500 font-semibold">
+                            ✓ {isNepali ? 'कस्टम कभर सक्रिय छ' : 'Custom cover active'}
+                          </p>
+                        </div>
+                      )}
+                      {formThumbnailStatus === 'failed' && (
+                        <div className="space-y-1.5 p-2.5 bg-red-950/20 border border-red-950 rounded-sm">
+                          <p className="text-red-400 font-semibold text-xs leading-relaxed">
+                            ⚠ {isNepali ? 'यो भिडियोको लागि कभर स्वतः पत्ता लगाउन असमर्थ।' : 'Unable to automatically detect a cover for this video.'}
+                          </p>
+                          <p className="text-[10px] text-dark-400">
+                            {isNepali ? 'कृपया कभर इमेज म्यानुअल्ली अपलोड गर्नुहोस्।' : 'Please upload a cover image manually.'}
+                          </p>
+                        </div>
+                      )}
+                      {formThumbnailStatus === 'none' && !formCoverUrl && (
+                        <p className="text-dark-500 italic">
+                          {isNepali ? 'कुनै कभर थपिएको छैन। कभर स्वतः पत्ता लगाउनुहोस् वा अपलोड गर्नुहोस्।' : 'No cover added yet. Please click Detect Cover or upload a custom image.'}
+                        </p>
+                      )}
+                    </>
+                  )}
+                </div>
+
                 {formCoverUrl && (
-                  <div className="relative aspect-video w-full max-w-[200px] mx-auto bg-dark-950 border border-primary-950 rounded-sm overflow-hidden flex items-center justify-center">
+                  <div className="relative aspect-video w-full max-w-[240px] mx-auto bg-dark-950 border border-primary-950 rounded-sm overflow-hidden flex items-center justify-center mt-2">
                     <img
                       src={formCoverUrl}
                       alt="Thumbnail Preview"
@@ -1282,10 +1387,14 @@ export default function AdminPage({ params: { locale } }) {
                     />
                     <button
                       type="button"
-                      onClick={() => setFormCoverUrl('')}
-                      className="absolute top-1.5 right-1.5 w-5 h-5 rounded-full bg-black/80 flex items-center justify-center text-dark-300 hover:text-white"
+                      onClick={() => {
+                        setFormCoverUrl('');
+                        setFormThumbnailStatus('none');
+                        setFormCoverSource('auto');
+                      }}
+                      className="absolute top-2 right-2 w-6 h-6 rounded-full bg-black/80 flex items-center justify-center text-dark-300 hover:text-white border border-primary-900"
                     >
-                      <X size={10} />
+                      <X size={12} />
                     </button>
                   </div>
                 )}

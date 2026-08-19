@@ -40,11 +40,9 @@ export async function POST(req) {
     }
 
     const entry = await req.json();
-    const { id, title_en, description_en, title_ne, description_ne, video_url, platform, cover_image_url, cover_source, status } = entry;
+    const { id, title_en, description_en, title_ne, description_ne, video_url, platform, cover_image_url, cover_source, thumbnailStatus, status } = entry;
 
-    // Standard checking
     if (id) {
-      // If we are doing a partial update (like individual cover refresh), title/description/url may be omitted
       const updateData = {};
       if (title_en !== undefined) updateData.title_en = title_en;
       if (description_en !== undefined) updateData.description_en = description_en;
@@ -54,6 +52,7 @@ export async function POST(req) {
       if (platform !== undefined) updateData.platform = platform;
       if (cover_image_url !== undefined) updateData.cover_image_url = cover_image_url;
       if (cover_source !== undefined) updateData.cover_source = cover_source;
+      if (thumbnailStatus !== undefined) updateData.thumbnailStatus = thumbnailStatus;
       if (status !== undefined) updateData.status = status;
 
       const result = await updateSocialVideo(id, updateData);
@@ -79,6 +78,7 @@ export async function POST(req) {
       platform: platform || 'other',
       cover_image_url: cover_image_url || '',
       cover_source: cover_source || 'auto',
+      thumbnailStatus: thumbnailStatus || 'none',
       status: status || 'draft'
     });
 
@@ -89,6 +89,10 @@ export async function POST(req) {
     return NextResponse.json({ success: true, data: result });
   } catch (error) {
     console.error('Error processing admin social video:', error);
+    // Gracefully handle duplicate URLs
+    if (error.message.includes('DUPLICATE_URL')) {
+      return NextResponse.json({ success: false, error: 'This video URL has already been added.' }, { status: 400 });
+    }
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });
   }
 }

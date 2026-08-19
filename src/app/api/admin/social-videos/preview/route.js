@@ -1,5 +1,13 @@
 import { NextResponse } from 'next/server';
 import { verifyAdminToken } from '@/lib/admin-auth';
+import { v2 as cloudinary } from 'cloudinary';
+
+// Configure Cloudinary
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET
+});
 
 export async function POST(req) {
   try {
@@ -76,7 +84,6 @@ async function getPreviewMetadata(url) {
     if (platform === 'youtube') {
       const videoId = extractYouTubeId(cleanUrl);
       if (videoId) {
-        // Find best quality image that is valid
         const qualities = ['maxresdefault', 'sddefault', 'hqdefault', 'default'];
         for (const q of qualities) {
           const testUrl = `https://img.youtube.com/vi/${videoId}/${q}.jpg`;
@@ -87,7 +94,6 @@ async function getPreviewMetadata(url) {
           }
         }
         
-        // Fetch oEmbed for title
         const oembedUrl = `https://www.youtube.com/oembed?url=${encodeURIComponent(cleanUrl)}&format=json`;
         const res = await fetch(oembedUrl);
         if (res.ok) {
@@ -121,7 +127,7 @@ async function getPreviewMetadata(url) {
   if (!coverImageUrl || !title) {
     try {
       const controller = new AbortController();
-      const id = setTimeout(() => controller.abort(), 4000); // 4 seconds timeout
+      const id = setTimeout(() => controller.abort(), 4000);
       
       const response = await fetch(cleanUrl, {
         headers: {
@@ -160,20 +166,58 @@ async function getPreviewMetadata(url) {
     }
   }
 
-  // 3. Final validation of resolved cover URL (if any was extracted from non-youtube)
-  if (coverImageUrl && platform !== 'youtube') {
+  // 3. Final validation and Cloudinary caching for transient URLs
+  let thumbnailStatus = 'none';
+  if (coverImageUrl) {
     const isImageValid = await validateImage(coverImageUrl);
     if (!isImageValid) {
       console.warn('[Preview] Resolved cover image URL failed validation:', coverImageUrl);
       coverImageUrl = '';
+      thumbnailStatus = 'failed';
+    } else {
+      // If valid, determine if caching is required (Facebook, Instagram, TikTok, etc.)
+      if (platform !== 'youtube' && platform !== 'vimeo' && !coverImageUrl.includes('cloudinary.com')) {
+        try {
+          console.log('[Preview] Downloading transient cover image for Cloudinary caching:', coverImageUrl);
+          const imageRes = await fetch(coverImageUrl);
+          if (imageRes.ok) {
+            const arrayBuffer = await imageRes.arrayBuffer();
+            const buffer = Buffer.from(arrayBuffer);
+            const base64Data = buffer.toString('base64');
+            const mimeType = imageRes.headers.get('content-type') || 'image/jpeg';
+            const fileUri = `data:${mimeType};base64,${base64Data}`;
+            
+            const uploadRes = await cloudinary.uploader.upload(fileUri, {
+              folder: 'social_covers',
+              resource_type: 'image'
+            });
+            coverImageUrl = uploadRes.secure_url;
+            thumbnailStatus = 'auto';
+            console.log('[Preview] Saved transient cover to Cloudinary:', coverImageUrl);
+          } else {
+            console.warn('[Preview] Failed to download transient cover image:', imageRes.statusText);
+            coverImageUrl = '';
+            thumbnailStatus = 'failed';
+          }
+        } catch (uploadErr) {
+          console.warn('[Preview] Failed to persist transient cover image to Cloudinary:', uploadErr.message);
+          coverImageUrl = '';
+          thumbnailStatus = 'failed';
+        }
+      } else {
+        thumbnailStatus = 'auto'; // YouTube / Vimeo / Cloudinary are treated as auto-detected permanent
+      }
     }
+  } else {
+    thumbnailStatus = 'failed';
   }
 
   return {
     platform,
     title,
     description,
-    coverImageUrl
+    coverImageUrl,
+    thumbnailStatus
   };
 }
 

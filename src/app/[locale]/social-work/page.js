@@ -51,6 +51,7 @@ export default function SocialWorkPage({ params: { locale } }) {
   const [videos, setVideos] = useState([]);
   const [videosLoading, setVideosLoading] = useState(true);
   const [selectedVideo, setSelectedVideo] = useState(null);
+  const [brokenImages, setBrokenImages] = useState({});
 
   // Fetch videos
   useEffect(() => {
@@ -157,17 +158,20 @@ export default function SocialWorkPage({ params: { locale } }) {
                 >
                   {/* Thumbnail Cover container */}
                   <div className="relative aspect-video w-full bg-dark-950 overflow-hidden flex items-center justify-center border-b border-primary-950">
-                    {video.cover_image_url ? (
+                    {video.cover_image_url && !brokenImages[video.id] ? (
                       <img
                         src={video.cover_image_url}
                         alt={title}
+                        onError={() => setBrokenImages(prev => ({ ...prev, [video.id]: true }))}
                         className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                         loading="lazy"
                       />
                     ) : (
-                      <div className="flex flex-col items-center gap-2 text-dark-500">
-                        <Play size={28} className="text-primary-600/70" />
-                        <span className="text-[10px] uppercase tracking-widest">{video.platform}</span>
+                      <div className="flex flex-col items-center gap-1.5 text-dark-600">
+                        <Play size={24} className="text-dark-700" />
+                        <span className="text-[10px] uppercase tracking-wider font-bold">
+                          {isNepali ? 'कभर उपलब्ध छैन' : 'Cover unavailable'}
+                        </span>
                       </div>
                     )}
                     {/* Hover Overlay Play Icon */}
@@ -273,16 +277,19 @@ export default function SocialWorkPage({ params: { locale } }) {
 
               {/* Large Cover Image */}
               <div className="relative aspect-video w-full bg-dark-950 border-b border-primary-950 flex items-center justify-center">
-                {selectedVideo.cover_image_url ? (
+                {selectedVideo.cover_image_url && !brokenImages[selectedVideo.id] ? (
                   <img
                     src={selectedVideo.cover_image_url}
                     alt={isNepali ? selectedVideo.title_ne : selectedVideo.title_en}
+                    onError={() => setBrokenImages(prev => ({ ...prev, [selectedVideo.id]: true }))}
                     className="w-full h-full object-cover"
                   />
                 ) : (
-                  <div className="flex flex-col items-center gap-2 text-dark-500">
-                    <Play size={40} className="text-primary-600/70" />
-                    <span className="text-xs uppercase tracking-widest font-bold">{selectedVideo.platform}</span>
+                  <div className="flex flex-col items-center gap-1.5 text-dark-600">
+                    <Play size={32} className="text-dark-700" />
+                    <span className="text-xs uppercase tracking-wider font-bold">
+                      {isNepali ? 'कभर उपलब्ध छैन' : 'Cover unavailable'}
+                    </span>
                   </div>
                 )}
                 {/* Play Button Overlay */}

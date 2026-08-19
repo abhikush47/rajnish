@@ -6,16 +6,15 @@ const usePostgres = !!process.env.DATABASE_URL;
 
 let pool;
 if (usePostgres) {
-  // Hide credentials safely for debugging
   const dbHost = process.env.DATABASE_URL.split('@')[1] || 'unknown';
   console.log(`[Social Videos] Initializing database connection pool for host: ${dbHost}`);
   
   pool = new Pool({
     connectionString: process.env.DATABASE_URL,
     ssl: { rejectUnauthorized: false },
-    max: 10,                      // Optimize connection pool size for Vercel Serverless
-    idleTimeoutMillis: 30000,      // Close idle connections after 30 seconds
-    connectionTimeoutMillis: 5000  // Fail fast on network timeout (5 seconds)
+    max: 10,
+    idleTimeoutMillis: 30000,
+    connectionTimeoutMillis: 5000
   });
 } else {
   console.log('[Social Videos] DATABASE_URL is not defined. Falling back to local JSON database.');
@@ -23,6 +22,24 @@ if (usePostgres) {
 
 const BUNDLED_DB = path.join(process.cwd(), 'data', 'db.json');
 const WRITABLE_DB = path.join('/tmp', 'db.json');
+
+// URL Normalization Helper
+export function normalizeUrl(url) {
+  if (!url) return '';
+  let clean = url.trim().toLowerCase();
+  
+  // Remove protocol
+  clean = clean.replace(/^https?:\/\//i, '');
+  // Remove www.
+  clean = clean.replace(/^www\./i, '');
+  // Remove query parameters
+  clean = clean.split('?')[0];
+  // Remove trailing slashes
+  if (clean.endsWith('/')) {
+    clean = clean.slice(0, -1);
+  }
+  return clean;
+}
 
 // --- JSON Local DB Fallback Helpers ---
 function getJsonDbFilePath() {
@@ -154,10 +171,17 @@ export async function initDb() {
         platform TEXT NOT NULL,
         cover_image_url TEXT,
         cover_source TEXT DEFAULT 'auto',
+        thumbnail_status TEXT DEFAULT 'none',
         status TEXT NOT NULL DEFAULT 'draft',
         created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
       );
+    `);
+
+    // Migrations to add missing fields in existing tables
+    await client.query(`
+      ALTER TABLE social_videos ADD COLUMN IF NOT EXISTS cover_source TEXT DEFAULT 'auto';
+      ALTER TABLE social_videos ADD COLUMN IF NOT EXISTS thumbnail_status TEXT DEFAULT 'none';
     `);
 
     await client.query('COMMIT');
@@ -205,9 +229,9 @@ export async function initDb() {
           if (db.social_videos) {
             for (const sv of db.social_videos) {
               await client.query(
-                `INSERT INTO social_videos (id, title_en, description_en, title_ne, description_ne, video_url, platform, cover_image_url, cover_source, status, created_at, updated_at) 
-                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12) ON CONFLICT (id) DO NOTHING;`,
-                [sv.id, sv.title_en, sv.description_en, sv.title_ne, sv.description_ne, sv.video_url, sv.platform, sv.cover_image_url, sv.cover_source || 'auto', sv.status, sv.createdAt || new Date(), sv.updatedAt || new Date()]
+                `INSERT INTO social_videos (id, title_en, description_en, title_ne, description_ne, video_url, platform, cover_image_url, cover_source, thumbnail_status, status, created_at, updated_at) 
+                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13) ON CONFLICT (id) DO NOTHING;`,
+                [sv.id, sv.title_en, sv.description_en, sv.title_ne, sv.description_ne, sv.video_url, sv.platform, sv.cover_image_url, sv.cover_source || 'auto', sv.thumbnailStatus || sv.thumbnail_status || 'none', sv.status, sv.createdAt || new Date(), sv.updatedAt || new Date()]
               );
             }
           }
@@ -215,7 +239,23 @@ export async function initDb() {
         }
       }
     } catch (migError) {
-      console.warn('[Social Videos] Migration skipped or failed:', migError.message);
+      console.warn('[Social Videos] Migration failed:', migError.message);
+    }
+
+    // Auto-repair cover status values for historical database rows
+    try {
+      await client.query(`
+        UPDATE social_videos 
+        SET thumbnail_status = 'failed', cover_image_url = ''
+        WHERE cover_image_url IS NULL OR cover_image_url = '';
+      `);
+      await client.query(`
+        UPDATE social_videos
+        SET thumbnail_status = 'auto'
+        WHERE cover_image_url IS NOT NULL AND cover_image_url <> '' AND (thumbnail_status IS NULL OR thumbnail_status = 'none');
+      `);
+    } catch (repairErr) {
+      console.warn('[Social Videos] Startup DB cover status repair failed:', repairErr.message);
     }
 
   } catch (err) {
@@ -495,24 +535,54 @@ export async function getSocialVideos() {
       platform: row.platform,
       cover_image_url: row.cover_image_url,
       cover_source: row.cover_source,
+      thumbnailStatus: row.thumbnail_status || 'none',
       status: row.status,
       createdAt: row.created_at,
       updatedAt: row.updated_at
     }));
   } else {
     const db = await readJsonDb();
-    return db.social_videos || [];
+    let changed = false;
+    const repaired = (db.social_videos || []).map(v => {
+      let status = v.thumbnailStatus || v.thumbnail_status || 'none';
+      let cover = v.cover_image_url || '';
+      if (!cover && status !== 'failed') {
+        status = 'failed';
+        cover = '';
+        changed = true;
+      } else if (cover && (status === 'none' || status === 'failed')) {
+        status = 'auto';
+        changed = true;
+      }
+      return {
+        ...v,
+        cover_image_url: cover,
+        thumbnailStatus: status
+      };
+    });
+    if (changed) {
+      db.social_videos = repaired;
+      writeJsonDb(db).catch(err => console.error('Failed to write JSON repair:', err));
+    }
+    return repaired;
   }
 }
 
 export async function addSocialVideo(entry) {
+  const normalizedInput = normalizeUrl(entry.video_url);
+  const currentVideos = await getSocialVideos();
+  const exists = currentVideos.some(v => normalizeUrl(v.video_url) === normalizedInput);
+  if (exists) {
+    throw new Error('DUPLICATE_URL: This video URL has already been added.');
+  }
+
   if (usePostgres) {
     await initDb();
     const id = `sv_${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
     const status = 'draft';
     const query = `
-      INSERT INTO social_videos (id, title_en, description_en, title_ne, description_ne, video_url, platform, cover_image_url, cover_source, status)
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+      INSERT INTO social_videos (id, title_en, description_en, title_ne, description_ne, video_url, platform, cover_image_url, cover_source, thumbnail_status, status)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
       RETURNING *;
     `;
     const res = await pool.query(query, [
@@ -525,6 +595,7 @@ export async function addSocialVideo(entry) {
       entry.platform,
       entry.cover_image_url || '',
       entry.cover_source || 'auto',
+      entry.thumbnailStatus || 'none',
       status
     ]);
     const row = res.rows[0];
@@ -538,6 +609,7 @@ export async function addSocialVideo(entry) {
       platform: row.platform,
       cover_image_url: row.cover_image_url,
       cover_source: row.cover_source,
+      thumbnailStatus: row.thumbnail_status || 'none',
       status: row.status,
       createdAt: row.created_at,
       updatedAt: row.updated_at
@@ -549,7 +621,8 @@ export async function addSocialVideo(entry) {
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
       status: 'draft',
-      ...entry
+      ...entry,
+      thumbnailStatus: entry.thumbnailStatus || 'none'
     };
     db.social_videos.push(newEntry);
     await writeJsonDb(db);
@@ -560,12 +633,18 @@ export async function addSocialVideo(entry) {
 export async function updateSocialVideo(id, entry) {
   if (usePostgres) {
     await initDb();
-    const keys = Object.keys(entry);
+    const dbEntry = { ...entry };
+    if (dbEntry.thumbnailStatus !== undefined) {
+      dbEntry.thumbnail_status = dbEntry.thumbnailStatus;
+      delete dbEntry.thumbnailStatus;
+    }
+
+    const keys = Object.keys(dbEntry);
     if (keys.length === 0) {
       throw new Error('No fields provided to update');
     }
     const setClause = keys.map((key, i) => `"${key}" = $${i + 2}`).join(', ');
-    const values = keys.map(key => entry[key]);
+    const values = keys.map(key => dbEntry[key]);
     const query = `
       UPDATE social_videos
       SET ${setClause}, updated_at = CURRENT_TIMESTAMP
@@ -585,6 +664,7 @@ export async function updateSocialVideo(id, entry) {
         platform: row.platform,
         cover_image_url: row.cover_image_url,
         cover_source: row.cover_source,
+        thumbnailStatus: row.thumbnail_status || 'none',
         status: row.status,
         createdAt: row.created_at,
         updatedAt: row.updated_at
@@ -598,6 +678,7 @@ export async function updateSocialVideo(id, entry) {
       db.social_videos[index] = {
         ...db.social_videos[index],
         ...entry,
+        thumbnailStatus: entry.thumbnailStatus || entry.thumbnail_status || db.social_videos[index].thumbnailStatus || 'none',
         updatedAt: new Date().toISOString()
       };
       await writeJsonDb(db);
