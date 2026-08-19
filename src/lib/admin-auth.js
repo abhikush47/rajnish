@@ -1,7 +1,7 @@
 /**
  * Verifies the Firebase ID Token from the request authorization header
  * and validates that the email is whitelisted.
- * Uses Google's public tokeninfo verification endpoint to avoid service account key parsing errors.
+ * Uses Firebase Auth REST API accounts:lookup to verify the token securely.
  */
 export async function verifyAdminToken(req) {
   const authHeader = req.headers.get('authorization') || '';
@@ -12,30 +12,33 @@ export async function verifyAdminToken(req) {
   const idToken = authHeader.substring(7);
 
   try {
-    const projectId = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || 'rajnish-f8c54';
+    const apiKey = process.env.NEXT_PUBLIC_FIREBASE_API_KEY || 'AIzaSyCL1XSkEwO20BebTLNH6AnXHJGPhAx6bVs';
     
-    // Verify token using Google's tokeninfo API
-    const verifyRes = await fetch(`https://oauth2.googleapis.com/tokeninfo?id_token=${encodeURIComponent(idToken)}`);
+    // Verify token using Firebase Auth REST API
+    const verifyRes = await fetch(`https://identitytoolkit.googleapis.com/v1/accounts:lookup?key=${apiKey}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ idToken })
+    });
     
     if (!verifyRes.ok) {
-      const errText = await verifyRes.text();
-      throw new Error(`Token verification failed: ${errText}`);
+      const errData = await verifyRes.json();
+      const errMsg = errData?.error?.message || 'Token verification failed';
+      throw new Error(`Firebase Auth API verification failed: ${errMsg}`);
     }
 
     const payload = await verifyRes.json();
+    const user = payload?.users?.[0];
     
-    // Validate audience matches our Firebase Project ID
-    if (payload.aud !== projectId && payload.client_id !== projectId) {
-      // Standard Firebase tokens have aud matching projectId, check fallback issuer as well
-      const expectedIss = `https://securetoken.google.com/${projectId}`;
-      if (payload.iss !== expectedIss) {
-        throw new Error('FORBIDDEN: Audience/Issuer mismatch');
-      }
+    if (!user) {
+      throw new Error('FORBIDDEN: User info missing from token response');
     }
 
-    const email = payload.email;
+    const email = user.email;
     if (!email) {
-      throw new Error('FORBIDDEN: Email claim is missing from token');
+      throw new Error('FORBIDDEN: Email claim is missing from token response');
     }
 
     // Default fallback to whitelisted emails if env variable not present in Vercel
@@ -47,7 +50,7 @@ export async function verifyAdminToken(req) {
       throw new Error(`FORBIDDEN: Email ${email} is not in the administrator whitelist`);
     }
 
-    return { email, uid: payload.sub };
+    return { email, uid: user.localId };
   } catch (error) {
     console.error('Admin Token Verification Failed:', error.message);
     throw new Error(`UNAUTHORIZED: ${error.message}`);
